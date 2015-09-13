@@ -56,6 +56,15 @@ impl<'a> Mesh<'a> {
         self.vertex_data(self.bitangents, id)
     }
 
+    pub fn texture_coords_iter(&self, channel_id: usize) -> Vector3DIter {
+        Vector3DIter::new(self.texture_coords[channel_id],
+                          self.num_vertices as usize)
+    }
+
+    pub fn get_texture_coord(&self, channel_id: usize, id: u32) -> Option<Vector3D> {
+        self.vertex_data(self.texture_coords[channel_id], id)
+    }
+
     pub fn num_faces(&self) -> u32 {
         self.num_faces
     }
@@ -63,6 +72,14 @@ impl<'a> Mesh<'a> {
     pub fn face_iter(&self) -> FaceIter {
         FaceIter::new(self.faces,
                       self.num_faces as usize)
+    }
+    
+    pub fn get_face(&self, id: u32) -> Option<Face> {
+        if id < self.num_faces {
+            unsafe { Some(Face::from_raw(self.faces.offset(id as isize))) }
+        } else {
+            None
+        }
     }
 
     #[inline]
