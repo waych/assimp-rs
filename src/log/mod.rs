@@ -10,8 +10,8 @@ pub struct LogStream {
 
 impl LogStream {
     pub fn file(filename: &str) -> Option<LogStream> {
-        let cstr = CString::new(filename).unwrap().as_ptr();
-        let stream = unsafe { aiGetPredefinedLogStream(AiDefaultLogStream::File, cstr) };
+        let cstr = CString::new(filename).unwrap();
+        let stream = unsafe { aiGetPredefinedLogStream(AiDefaultLogStream::File, cstr.as_ptr()) };
         if stream.callback.is_some() {
             Some(LogStream { raw: stream, attached: false })
         } else {

@@ -50,9 +50,13 @@ impl Importer {
     /// If the call fails, return value is `Err`, containing the error string returned from
     /// the Assimp library.
     pub fn read_file<'a>(&self, file: &str) -> Result<Scene<'a>, &str> {
-        let cstr = CString::new(file).unwrap().as_ptr();
+        let cstr = CString::new(file).unwrap();
         let raw_scene = unsafe {
-            aiImportFileExWithProperties(cstr, self.flags, ptr::null_mut(), self.property_store)
+            aiImportFileExWithProperties(
+                cstr.as_ptr(),
+                self.flags,
+                ptr::null_mut(),
+                self.property_store)
         };
         if !raw_scene.is_null() {
             Ok(Scene::from_raw(raw_scene))
@@ -78,9 +82,14 @@ impl Importer {
     /// If the call fails, return value is `Err`, containing the error string returned from
     /// the Assimp library.
     pub fn read_string<'a>(&self, data: &str) -> Result<Scene<'a>, &str> {
-        let cstr = CString::new(data).unwrap().as_ptr();
+        let cstr = CString::new(data).unwrap();
         let raw_scene = unsafe {
-            aiImportFromMemoryWithProperties(cstr, data.len() as u32, self.flags, ptr::null_mut(), self.property_store)
+            aiImportFileFromMemoryWithProperties(
+                cstr.as_ptr(),
+                data.len() as u32,
+                self.flags,
+                ptr::null_mut(),
+                self.property_store)
         };
         if !raw_scene.is_null() {
             Ok(Scene::from_raw(raw_scene))
@@ -158,27 +167,27 @@ impl Importer {
 
     /// Helper method to set an integer import property.
     fn set_int_property(&mut self, name: &str, value: i32) {
-        let cstr = CString::new(name).unwrap().as_ptr();
-        unsafe { aiSetImportPropertyInteger(self.property_store, cstr, value); }
+        let cstr = CString::new(name).unwrap();
+        unsafe { aiSetImportPropertyInteger(self.property_store, cstr.as_ptr(), value); }
     }
 
     /// Helper method to set a floating point import property.
     fn set_float_property(&mut self, name: &str, value: f32) {
-        let cstr = CString::new(name).unwrap().as_ptr();
-        unsafe { aiSetImportPropertyFloat(self.property_store, cstr, value); }
+        let cstr = CString::new(name).unwrap();
+        unsafe { aiSetImportPropertyFloat(self.property_store, cstr.as_ptr(), value); }
     }
 
     /// Helper method to set a 4x4 matrix import property.
     fn set_matrix_property(&mut self, name: &str, value: Matrix4x4) {
-        let cstr = CString::new(name).unwrap().as_ptr();
-        unsafe { aiSetImportPropertyMatrix(self.property_store, cstr, &*value); }
+        let cstr = CString::new(name).unwrap();
+        unsafe { aiSetImportPropertyMatrix(self.property_store, cstr.as_ptr(), &*value); }
     }
 
     /// Helper method to set a string import property.
     fn set_string_property(&mut self, name: &str, value: &str) {
-        let cstr = CString::new(name).unwrap().as_ptr();
+        let cstr = CString::new(name).unwrap();
         let aistr: AiString = From::from(value);
-        unsafe { aiSetImportPropertyString(self.property_store, cstr, &aistr) }
+        unsafe { aiSetImportPropertyString(self.property_store, cstr.as_ptr(), &aistr) }
     }
 
     /// Calculates the tangents and bitangents for the imported meshes.
