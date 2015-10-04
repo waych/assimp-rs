@@ -10,9 +10,8 @@ license = "MIT"
 readme = "README.md"
 
 [dependencies]
-assimp-sys = "0.0.3"
-cgmath = "0.1.5"
+assimp-sys = "0.0.4"
+cgmath = "0.2.0" # Need to match version used in glium
 
 [dev-dependencies]
-glium = "0.3.7"
-glutin = "0.1.4"
+glium = "0.9.1"

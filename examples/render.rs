@@ -2,18 +2,17 @@ extern crate assimp;
 extern crate cgmath;
 #[macro_use]
 extern crate glium;
-extern crate glutin;
 
 use assimp::{Importer, LogStream};
 
 use cgmath::{perspective, Matrix4, deg, Vector3, Point3};
-use glutin::{Api, GlRequest};
+use glium::glutin;
 use glium::{DisplayBuild, Surface};
+use glium::index::PrimitiveType;
 
 fn main() {
     let display = glutin::WindowBuilder::new()
         .with_depth_buffer(24)
-        .with_gl(GlRequest::Specific(Api::OpenGl, (3, 0)))
         .build_glium()
         .unwrap();
 
@@ -84,8 +83,8 @@ fn main() {
             ).collect();
 
             // Create vertex buffer
-            let vb = glium::VertexBuffer::new(&display, verts);
-            vertex_buffers.push(vb);
+            let vb = glium::VertexBuffer::new(&display, &verts);
+            vertex_buffers.push(vb.unwrap());
 
             // Safe to assume all faces are triangles due to import options
             let mut indices = Vec::with_capacity(mesh.num_faces() as usize * 3);
@@ -95,8 +94,8 @@ fn main() {
                 indices.push(face[2]);
             }
 
-            let ib = glium::IndexBuffer::new(&display, glium::index::TrianglesList(indices));
-            index_buffers.push(ib);
+            let ib = glium::IndexBuffer::new(&display, PrimitiveType::TrianglesList, &indices);
+            index_buffers.push(ib.unwrap());
         }
     }
 
@@ -113,16 +112,23 @@ fn main() {
     };
 
     // Main loop
-    while !display.is_closed() {
-        // "process" all events
-        for _ in display.poll_events() { }
+    loop {
+        for ev in display.poll_events() {
+            match ev {
+                glium::glutin::Event::Closed => return,
+                _ => ()
+            }
+        }
 
         let mut target = display.draw();
         target.clear_color_and_depth((0.1, 0.1, 0.1, 1.0), 1.0);
 
         let params = glium::DrawParameters {
-            depth_test: glium::DepthTest::IfLess,
-            depth_write: true,
+            depth: glium::Depth {
+                test: glium::DepthTest::IfLess,
+                write: true,
+                ..Default::default()
+            },
             ..Default::default()
         };
 
@@ -134,6 +140,6 @@ fn main() {
                         &params).unwrap();
         }
 
-        target.finish();
+        target.finish().unwrap();
     }
 }
