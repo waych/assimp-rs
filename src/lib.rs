@@ -4,7 +4,6 @@
 
 extern crate assimp_sys as ffi;
 extern crate cgmath;
-extern crate libc;
 
 pub use import::Importer;
 pub use log::LogStream;

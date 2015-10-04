@@ -12,7 +12,6 @@ readme = "README.md"
 [dependencies]
 assimp-sys = "0.0.3"
 cgmath = "0.1.5"
-libc = "0.1.7"
 
 [dev-dependencies]
 glium = "0.3.7"

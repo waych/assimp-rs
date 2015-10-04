@@ -1,8 +1,8 @@
 use std::mem;
 use std::ops::Index;
+use std::os::raw::c_uint;
 
 use ffi::AiFace;
-use libc::c_uint;
 
 define_type_and_iterator! {
     /// Face type (not yet implemented)
