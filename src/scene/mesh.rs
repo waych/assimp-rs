@@ -1,13 +1,29 @@
-use ffi::{AiMesh, AiVector3D};
+use ffi::{AiMesh, AiVector3D, AiBone, AiVertexWeight};
 
 use math::vector3::{Vector3D, Vector3DIter};
 use super::face::{Face, FaceIter};
+
+use math::Matrix4x4;
 
 define_type_and_iterator_indirect! {
     /// Mesh type (incomplete)
     struct Mesh(&AiMesh)
     /// Mesh iterator type.
     struct MeshIter
+}
+
+define_type_and_iterator_indirect! {
+    /// Bone type
+    struct Bone(&AiBone)
+    /// Bone iterator type.
+    struct BoneIter
+}
+
+define_type_and_iterator_indirect! {
+    /// Vertex weight type
+    struct VertexWeight(&AiVertexWeight)
+    /// Vertex weight iterator type.
+    struct VertexWeightIter
 }
 
 impl<'a> Mesh<'a> {
@@ -73,10 +89,27 @@ impl<'a> Mesh<'a> {
         FaceIter::new(self.faces,
                       self.num_faces as usize)
     }
-    
+
     pub fn get_face(&self, id: u32) -> Option<Face> {
         if id < self.num_faces {
             unsafe { Some(Face::from_raw(self.faces.offset(id as isize))) }
+        } else {
+            None
+        }
+    }
+
+    pub fn num_bones(&self) -> u32 {
+        self.num_bones
+    }
+
+    pub fn bone_iter(&self) -> BoneIter {
+        BoneIter::new(self.bones as *const *const AiBone,
+                      self.num_bones as usize)
+    }
+
+    pub fn get_bone(&self, id: u32) -> Option<Bone> {
+        if id < self.num_bones {
+            unsafe { Some(Bone::from_raw(*(self.bones.offset(id as isize)))) }
         } else {
             None
         }
@@ -86,6 +119,35 @@ impl<'a> Mesh<'a> {
     fn vertex_data(&self, array: *mut AiVector3D, id: u32) -> Option<Vector3D> {
         if id < self.num_vertices {
             unsafe { Some(Vector3D::from_raw(array.offset(id as isize))) }
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> Bone<'a> {
+    /// Returns the name of the bone.
+    pub fn name(&self) -> &str {
+        self.name.as_ref()
+    }
+
+    /// Returns the bones's offset transformation matrix.
+    pub fn offset_matrix(&self) -> Matrix4x4 {
+        Matrix4x4::from_raw(&self.offset_matrix)
+    }
+
+    pub fn num_weights(&self) -> u32 {
+        self.num_weights
+    }
+
+    pub fn weight_iter(&self) -> VertexWeightIter {
+        VertexWeightIter::new(self.weights as *const *const AiVertexWeight,
+                      self.num_weights as usize)
+    }
+
+    pub fn get_weight(&self, id: u32) -> Option<VertexWeight> {
+        if id < self.num_weights {
+            unsafe { Some(VertexWeight::from_raw(self.weights.offset(id as isize))) }
         } else {
             None
         }
