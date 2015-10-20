@@ -11,7 +11,7 @@ readme = "README.md"
 
 [dependencies]
 assimp-sys = "0.0.4"
-cgmath = "0.2.0" # Need to match version used in glium
+cgmath = "0.3.0" # Need to match version used in glium
 
 [dev-dependencies]
-glium = "0.9.1"
+glium = "0.10.0"
