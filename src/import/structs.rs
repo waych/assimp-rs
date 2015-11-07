@@ -1,6 +1,6 @@
 //! Argument structs for `Importer` post-processing configuration.
 
-use cgmath::Matrix4;
+use cgmath::{Matrix, Matrix4};
 use ffi::config::*;
 
 use math::Matrix4x4;
@@ -115,7 +115,7 @@ struct_with_defaults! {
         /// `root_transformation` field. Default: false
         pub add_root_transformation: bool = false,
         /// Transformation matrix to use.
-        pub root_transformation: Matrix4x4 = Matrix4x4::from(Matrix4::<f32>::identity())
+        pub root_transformation: Matrix4x4 = Matrix4x4::from(Matrix4::one())
     }
 }
 
