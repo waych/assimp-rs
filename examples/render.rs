@@ -4,7 +4,6 @@ extern crate cgmath;
 extern crate glium;
 
 use assimp::{Importer, LogStream};
-
 use cgmath::{perspective, Matrix4, deg, Vector3, Point3};
 use glium::glutin;
 use glium::{DisplayBuild, Surface};
@@ -103,8 +102,8 @@ fn main() {
     let eye = Point3::new(0.0, 3.0, 3.0);
     let pos = Point3::new(0.0, 0.0, 0.0);
     let up = Vector3::new(0.0, 1.0, 0.0);
-    let persp_matrix = cgmath::perspective(deg(60.0), 1.333, 0.1, 1000.0);
-    let view_matrix = Matrix4::look_at(&eye, &pos, &up);
+    let persp_matrix: [[f32; 4]; 4] = cgmath::perspective(deg(60.0), 1.333, 0.1, 1000.0).into();
+    let view_matrix: [[f32; 4]; 4] = Matrix4::look_at(eye, pos, up).into();;
 
     let uniforms = uniform! {
         persp_matrix: persp_matrix,

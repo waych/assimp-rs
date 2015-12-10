@@ -1,3 +1,4 @@
+#[cfg(feature = "cgmath")]
 use cgmath::Quaternion as CgQuaternion;
 use ffi::AiQuaternion;
 
@@ -13,12 +14,14 @@ impl Quaternion {
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl From<CgQuaternion<f32>> for Quaternion {
     fn from(q: CgQuaternion<f32>) -> Quaternion {
         Quaternion::new(q[0], q[1], q[2], q[3])
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl Into<CgQuaternion<f32>> for Quaternion {
     fn into(self) -> CgQuaternion<f32> {
         CgQuaternion::new(self.w, self.x, self.y, self.z)

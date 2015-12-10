@@ -1,3 +1,4 @@
+#[cfg(feature = "cgmath")]
 use cgmath::Matrix4;
 use ffi::AiMatrix4x4;
 
@@ -21,6 +22,7 @@ impl Matrix4x4 {
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl From<Matrix4<f32>> for Matrix4x4 {
     fn from(mat: Matrix4<f32>) -> Matrix4x4 {
         Matrix4x4::new(mat[0][0], mat[1][0], mat[2][0], mat[3][0],
@@ -30,6 +32,7 @@ impl From<Matrix4<f32>> for Matrix4x4 {
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl Into<Matrix4<f32>> for Matrix4x4 {
     fn into(self) -> Matrix4<f32> {
         Matrix4::new(self.a1, self.b1, self.c1, self.d1,

@@ -1,3 +1,4 @@
+#[cfg(feature = "cgmath")]
 use cgmath::{Point2, Vector2};
 use ffi::AiVector2D;
 
@@ -25,24 +26,28 @@ impl Into<[f32; 2]> for Vector2D {
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl From<Point2<f32>> for Vector2D {
     fn from(p: Point2<f32>) -> Vector2D {
         Vector2D::new(p[0], p[1])
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl Into<Point2<f32>> for Vector2D {
     fn into(self) -> Point2<f32> {
         Point2::new(self.x, self.y)
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl From<Vector2<f32>> for Vector2D {
     fn from(p: Vector2<f32>) -> Vector2D {
         Vector2D::new(p[0], p[1])
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl Into<Vector2<f32>> for Vector2D {
     fn into(self) -> Vector2<f32> {
         Vector2::new(self.x, self.y)

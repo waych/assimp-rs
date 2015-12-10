@@ -3,6 +3,7 @@
 //! Bindings for the [Assimp](http://assimp.sourceforge.net) library.
 
 extern crate assimp_sys as ffi;
+#[cfg(feature = "cgmath")]
 extern crate cgmath;
 
 pub use import::Importer;

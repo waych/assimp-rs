@@ -1,3 +1,4 @@
+#[cfg(feature = "cgmath")]
 use cgmath::Vector4;
 use ffi::AiColor4D;
 
@@ -25,12 +26,14 @@ impl Into<[f32; 4]> for Color4D {
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl From<Vector4<f32>> for Color4D {
     fn from(p: Vector4<f32>) -> Color4D {
         Color4D::new(p[0], p[1], p[2], p[3])
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl Into<Vector4<f32>> for Color4D {
     fn into(self) -> Vector4<f32> {
         Vector4::new(self.r, self.g, self.b, self.a)

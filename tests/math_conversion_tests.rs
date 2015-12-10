@@ -1,3 +1,4 @@
+#![cfg(feature = "cgmath")]
 extern crate assimp;
 extern crate cgmath;
 

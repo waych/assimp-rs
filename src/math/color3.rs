@@ -1,3 +1,4 @@
+#[cfg(feature = "cgmath")]
 use cgmath::Vector3;
 use ffi::AiColor3D;
 
@@ -25,12 +26,14 @@ impl Into<[f32; 3]> for Color3D {
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl From<Vector3<f32>> for Color3D {
     fn from(p: Vector3<f32>) -> Color3D {
         Color3D::new(p[0], p[1], p[2])
     }
 }
 
+#[cfg(feature = "cgmath")]
 impl Into<Vector3<f32>> for Color3D {
     fn into(self) -> Vector3<f32> {
         Vector3::new(self.r, self.g, self.b)
