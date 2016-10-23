@@ -760,6 +760,13 @@ impl Importer {
         self.set_bool_property(IMPORT_FBX_READ_MATERIALS, enable);
     }
 
+    /// Set whether the FBX importer will read embedded textures.
+    ///
+    /// Default: true.
+    pub fn fbx_read_textures(&mut self, enable: bool) {
+        self.set_bool_property(IMPORT_FBX_READ_TEXTURES, enable);
+    }
+
     /// Set whether the FBX importer will read cameras.
     ///
     /// Default: true.
