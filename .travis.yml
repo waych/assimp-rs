@@ -1,27 +1,20 @@
 language: rust
+sudo: false
 
 rust:
-  - 1.4.0
-  - 1.5.0
+  - stable
   - beta
   - nightly
-
-env:
-  - LD_LIBRARY_PATH=/usr/local/lib
-
-install:
-  - sudo apt-get update -qq
-  - sudo apt-get install libxxf86vm-dev libosmesa6-dev
-  - ./travis-install-assimp.sh
 
 before_script:
   - rustc -V
   - cargo -V
   - pip install 'travis-cargo<0.2' --user
   - export PATH=$HOME/.local/bin:$PATH
+  - export CARGO_TARGET_DIR="$TRAVIS_BUILD_DIR/target"
 
 script:
-  - travis-cargo build
+  - travis-cargo build -- -j1
   - travis-cargo test
   - travis-cargo test -- --features cgmath
   - travis-cargo --only stable doc
