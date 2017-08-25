@@ -2,10 +2,12 @@
 use cgmath::Vector4;
 use ffi::AiColor4D;
 
-define_type! {
+define_type_and_iterator! {
     /// Color4D docs
     #[derive(Clone, Copy, Debug, PartialEq)]
     struct Color4D(AiColor4D)
+    /// Color4DIter docs
+    struct Color4DIter
 }
 
 impl Color4D {

@@ -1,6 +1,7 @@
-use ffi::{AiMesh, AiVector3D, AiBone, AiVertexWeight};
+use ffi::{AiMesh, AiVector3D, AiBone, AiVertexWeight, AiColor4D};
 
 use math::vector3::{Vector3D, Vector3DIter};
+use math::color4::{Color4D, Color4DIter};
 use super::face::{Face, FaceIter};
 
 use math::Matrix4x4;
@@ -72,6 +73,15 @@ impl<'a> Mesh<'a> {
         self.vertex_data(self.bitangents, id)
     }
 
+    pub fn vertex_color_iter(&self, set_id: usize) -> Color4DIter {
+        Color4DIter::new(self.colors[set_id],
+                         self.num_vertices as usize)
+    }
+
+    pub fn get_vertex_color(&self, set_id: usize, id: u32) -> Option<Color4D> {
+        self.color_data(self.colors[set_id], id)
+    }
+
     pub fn texture_coords_iter(&self, channel_id: usize) -> Vector3DIter {
         Vector3DIter::new(self.texture_coords[channel_id],
                           self.num_vertices as usize)
@@ -119,6 +129,15 @@ impl<'a> Mesh<'a> {
     fn vertex_data(&self, array: *mut AiVector3D, id: u32) -> Option<Vector3D> {
         if id < self.num_vertices {
             unsafe { Some(Vector3D::from_raw(array.offset(id as isize))) }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn color_data(&self, array: *mut AiColor4D, id: u32) -> Option<Color4D> {
+        if id < self.num_vertices {
+            unsafe { Some(Color4D::from_raw(array.offset(id as isize))) }
         } else {
             None
         }
