@@ -20,9 +20,9 @@ impl From<[f32; 2]> for Vector2D {
     }
 }
 
-impl Into<[f32; 2]> for Vector2D {
-    fn into(self) -> [f32; 2] {
-        [self.x, self.y]
+impl From<Vector2D> for [f32; 2] {
+    fn from(v: Vector2D) -> [f32; 2] {
+        [v.x, v.y]
     }
 }
 
@@ -34,22 +34,22 @@ impl From<Point2<f32>> for Vector2D {
 }
 
 #[cfg(feature = "cgmath")]
-impl Into<Point2<f32>> for Vector2D {
-    fn into(self) -> Point2<f32> {
-        Point2::new(self.x, self.y)
+impl From<Vector2D> for Point2<f32> {
+    fn from(v: Vector2D) -> Point2<f32> {
+        Point2::new(v.x, v.y)
     }
 }
 
 #[cfg(feature = "cgmath")]
 impl From<Vector2<f32>> for Vector2D {
-    fn from(p: Vector2<f32>) -> Vector2D {
-        Vector2D::new(p[0], p[1])
+    fn from(v: Vector2<f32>) -> Vector2D {
+        Vector2D::new(v[0], v[1])
     }
 }
 
 #[cfg(feature = "cgmath")]
-impl Into<Vector2<f32>> for Vector2D {
-    fn into(self) -> Vector2<f32> {
-        Vector2::new(self.x, self.y)
+impl From<Vector2D> for Vector2<f32> {
+    fn from(v: Vector2D) -> Vector2<f32> {
+        Vector2::new(v.x, v.y)
     }
 }
