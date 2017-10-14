@@ -10,7 +10,7 @@ license = "MIT"
 readme = "README.md"
 
 [dependencies]
-assimp-sys = "0.2.2"
+assimp-sys = "0.3.0"
 
 [dependencies.cgmath]
 version = "0.12.0"
