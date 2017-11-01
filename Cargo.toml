@@ -1,6 +1,6 @@
 [package]
 name = "assimp"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Lee Jeffery <lee@leejeffery.co.uk>"]
 
 description = "Rust bindings for the Assimp library"
@@ -10,7 +10,7 @@ license = "MIT"
 readme = "README.md"
 
 [dependencies]
-assimp-sys = "0.3.0"
+assimp-sys = "0.3.1"
 
 [dependencies.cgmath]
 version = "0.12.0"
