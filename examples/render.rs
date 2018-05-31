@@ -5,15 +5,14 @@ extern crate glium;
 
 use assimp::{Importer, LogStream};
 use cgmath::{perspective, Matrix4, Deg, Vector3, Point3};
-use glium::glutin;
-use glium::{DisplayBuild, Surface};
+use glium::{glutin, Surface};
 use glium::index::PrimitiveType;
 
 fn main() {
-    let display = glutin::WindowBuilder::new()
-        .with_depth_buffer(24)
-        .build_glium()
-        .unwrap();
+    let mut events_loop = glutin::EventsLoop::new();
+    let window = glutin::WindowBuilder::new();
+    let context = glutin::ContextBuilder::new().with_depth_buffer(24);
+    let display = glium::Display::new(window, context, &events_loop).unwrap();
 
     #[derive(Copy, Clone, Debug)]
     struct Vertex3 {
@@ -110,15 +109,7 @@ fn main() {
         view_matrix: view_matrix
     };
 
-    // Main loop
-    loop {
-        for ev in display.poll_events() {
-            match ev {
-                glium::glutin::Event::Closed => return,
-                _ => ()
-            }
-        }
-
+    let draw = || {
         let mut target = display.draw();
         target.clear_color_and_depth((0.1, 0.1, 0.1, 1.0), 1.0);
 
@@ -140,5 +131,20 @@ fn main() {
         }
 
         target.finish().unwrap();
-    }
+    };
+
+    draw();
+
+    // Main loop
+    events_loop.run_forever(|event| {
+        match event {
+            glutin::Event::WindowEvent { event, .. } => match event {
+                glutin::WindowEvent::Closed => return glutin::ControlFlow::Break,
+                glutin::WindowEvent::Resized(..) => draw(),
+                _ => (),
+            },
+            _ => (),
+        }
+        glutin::ControlFlow::Continue
+    });
 }

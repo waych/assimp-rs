@@ -22,8 +22,8 @@ impl From<CgQuaternion<f32>> for Quaternion {
 }
 
 #[cfg(feature = "cgmath")]
-impl Into<CgQuaternion<f32>> for Quaternion {
-    fn into(self) -> CgQuaternion<f32> {
-        CgQuaternion::new(self.w, self.x, self.y, self.z)
+impl From<Quaternion> for CgQuaternion<f32> {
+    fn from(q: Quaternion) -> CgQuaternion<f32> {
+        CgQuaternion::new(q.w, q.x, q.y, q.z)
     }
 }
