@@ -76,16 +76,15 @@ impl Importer {
         }
     }
 
-    /// Load a scene from a string.
+    /// Load a scene from memory.
     ///
     /// If the call succeeds, return value is `Ok`, containing the loaded `Scene` structure.
     /// If the call fails, return value is `Err`, containing the error string returned from
     /// the Assimp library.
-    pub fn read_string<'a>(&self, data: &str) -> Result<Scene<'a>, &str> {
-        let cstr = CString::new(data).unwrap();
+    pub fn read_memory<'a>(&self, data: &[u8]) -> Result<Scene<'a>, &str> {
         let raw_scene = unsafe {
             aiImportFileFromMemoryWithProperties(
-                cstr.as_ptr(),
+                data.as_ptr() as *const i8,
                 data.len() as u32,
                 self.flags,
                 ptr::null_mut(),
