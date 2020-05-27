@@ -1,0 +1,3 @@
+[submodule "assimp-sys"]
+	path = assimp-sys
+	url = git@github.com:Vurich/assimp-sys.git
