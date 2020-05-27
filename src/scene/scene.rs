@@ -9,12 +9,23 @@ use super::mesh::*;
 use super::node::*;
 use super::texture::*;
 
-define_type! {
-    /// The `Scene` type is the root container for all imported scene data.
-    struct Scene(&AiScene)
+pub struct Scene<'a>(&'a AiScene);
+
+impl<'a> Scene<'_> {
+    pub unsafe fn from_raw(inner: *const AiScene) -> Self {
+        Self(&*inner)
+    }
 }
 
-impl<'a> Scene<'a> {
+impl std::ops::Deref for Scene<'_> {
+    type Target = AiScene;
+
+    fn deref(&self) -> &Self::Target {
+        self.0
+    }
+}
+
+impl Scene<'_> {
     /// Returns true if the imported scene is not complete.
     pub fn is_incomplete(&self) -> bool {
         self.flags.contains(AI_SCENE_FLAGS_INCOMPLETE)
@@ -43,8 +54,8 @@ impl<'a> Scene<'a> {
     }
 
     /// Returns the root node of the scene hierarchy
-    pub fn root_node(&self) -> Node {
-        Node::from_raw(self.root_node)
+    pub fn root_node(&self) -> &Node {
+        unsafe { Node::from_raw(self.root_node) }
     }
 
     /// Returns the number of meshes in the scene.
@@ -54,12 +65,14 @@ impl<'a> Scene<'a> {
 
     /// Returns an iterator over all the meshes in the scene.
     pub fn mesh_iter(&self) -> MeshIter {
-        MeshIter::new(self.meshes as *const *const AiMesh,
-                      self.num_meshes as usize)
+        MeshIter::new(
+            self.meshes as *const *const AiMesh,
+            self.num_meshes as usize,
+        )
     }
 
     /// Return an individual mesh from the scene.
-    pub fn mesh(&self, id: usize) -> Option<Mesh> {
+    pub fn mesh(&self, id: usize) -> Option<&Mesh> {
         if id < self.num_meshes as usize {
             unsafe { Some(Mesh::from_raw(*(self.meshes.offset(id as isize)))) }
         } else {
@@ -74,8 +87,10 @@ impl<'a> Scene<'a> {
 
     /// Returns an iterator over all the materials in the scene.
     pub fn material_iter(&self) -> MaterialIter {
-        MaterialIter::new(self.materials as *const *const AiMaterial,
-                          self.num_materials as usize)
+        MaterialIter::new(
+            self.materials as *const *const AiMaterial,
+            self.num_materials as usize,
+        )
     }
 
     /// Returns the number of animations in the scene.
@@ -85,12 +100,14 @@ impl<'a> Scene<'a> {
 
     /// Returns an iterator over all the animations in the scene.
     pub fn animation_iter(&self) -> AnimationIter {
-        AnimationIter::new(self.animations as *const *const AiAnimation,
-                           self.num_animations as usize)
+        AnimationIter::new(
+            self.animations as *const *const AiAnimation,
+            self.num_animations as usize,
+        )
     }
 
     /// Return an individual animation from the scene.
-    pub fn animation(&self, id: usize) -> Option<Animation> {
+    pub fn animation(&self, id: usize) -> Option<&Animation> {
         if id < self.num_animations as usize {
             unsafe { Some(Animation::from_raw(*(self.animations.offset(id as isize)))) }
         } else {
@@ -105,8 +122,10 @@ impl<'a> Scene<'a> {
 
     /// Returns an iterator over all the textures in the scene.
     pub fn texture_iter(&self) -> TextureIter {
-        TextureIter::new(self.textures as *const *const AiTexture,
-                         self.num_textures as usize)
+        TextureIter::new(
+            self.textures as *const *const AiTexture,
+            self.num_textures as usize,
+        )
     }
 
     /// Returns the number of lights in the scene.
@@ -116,8 +135,10 @@ impl<'a> Scene<'a> {
 
     /// Returns an iterator over all the lights in the scene.
     pub fn light_iter(&self) -> LightIter {
-        LightIter::new(self.lights as *const *const AiLight,
-                       self.num_lights as usize)
+        LightIter::new(
+            self.lights as *const *const AiLight,
+            self.num_lights as usize,
+        )
     }
 
     /// Returns the number of cameras in the scene.
@@ -127,15 +148,19 @@ impl<'a> Scene<'a> {
 
     /// Returns an iterator over all the cameras in the scene.
     pub fn camera_iter(&self) -> CameraIter {
-        CameraIter::new(self.cameras as *const *const AiCamera,
-                        self.num_cameras as usize)
+        CameraIter::new(
+            self.cameras as *const *const AiCamera,
+            self.num_cameras as usize,
+        )
     }
 }
 
 // Drop implementation for a scene owned by Assimp.
 // Scenes returned by aiImportFile* methods must be freed with aiReleaseImport.
-impl<'a> Drop for Scene<'a> {
+impl Drop for Scene<'_> {
     fn drop(&mut self) {
-        unsafe { aiReleaseImport(self.0); }
+        unsafe {
+            aiReleaseImport(self.0);
+        }
     }
 }

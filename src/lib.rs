@@ -9,7 +9,10 @@ extern crate cgmath;
 pub use import::Importer;
 pub use log::LogStream;
 pub use math::{Color3D, Color4D, Matrix3x3, Matrix4x4, Quaternion, Vector2D, Vector3D};
-pub use scene::{Animation, NodeAnim, VectorKey, QuatKey, Camera, Face, Light, Material, Mesh, Node, Scene, Texture};
+pub use scene::{
+    Animation, Camera, Face, Light, Material, Mesh, Metadata, MetadataEntry, Node, NodeAnim,
+    QuatKey, Scene, Texture, TextureData, Value, VectorKey,
+};
 
 #[macro_use]
 mod internal_macros;

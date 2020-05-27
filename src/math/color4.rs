@@ -12,7 +12,12 @@ define_type_and_iterator! {
 
 impl Color4D {
     pub fn new(r: f32, g: f32, b: f32, a: f32) -> Color4D {
-        Color4D(AiColor4D { r: r, g: g, b: b, a: a })
+        Color4D(AiColor4D {
+            r: r,
+            g: g,
+            b: b,
+            a: a,
+        })
     }
 }
 

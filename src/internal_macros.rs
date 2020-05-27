@@ -7,7 +7,6 @@ macro_rules! define_iter {
         $(#[$iter_attr])*
         pub struct $name<'a> {
             ptr: $raw,
-            idx: isize,
             len: usize,
             _mk: ::std::marker::PhantomData<&'a ()>
         }
@@ -15,21 +14,27 @@ macro_rules! define_iter {
         #[doc(hidden)]
         impl<'a> $name<'a> {
             pub fn new(ptr: $raw, len: usize) -> $name<'a> {
-                $name { ptr: ptr, idx: 0, len: len, _mk: ::std::marker::PhantomData }
+                $name { ptr: ptr, len: len, _mk: ::std::marker::PhantomData }
             }
         }
     )
 }
 
 macro_rules! impl_iterator {
-    ($name:ident, $item:ident) => (
+    ($name:ident, $item:ident) => {
         impl<'a> Iterator for $name<'a> {
-            type Item = $item<'a>;
-            fn next(&mut self) -> Option<$item<'a>> {
-                if self.idx < self.len as isize {
-                    let item = $item::from_raw(unsafe { self.ptr.offset(self.idx) });
-                    self.idx = self.idx + 1;
-                    Some(item)
+            type Item = &'a $item;
+
+            fn next(&mut self) -> Option<&'a $item> {
+                if self.len > 0 {
+                    unsafe {
+                        let item = $item::from_raw(self.ptr);
+
+                        self.ptr = self.ptr.offset(1);
+                        self.len -= 1;
+
+                        Some(item)
+                    }
                 } else {
                     None
                 }
@@ -37,20 +42,28 @@ macro_rules! impl_iterator {
         }
 
         impl<'a> ExactSizeIterator for $name<'a> {
-            fn len(&self) -> usize { self.len }
+            fn len(&self) -> usize {
+                self.len
+            }
         }
-    )
+    };
 }
 
 macro_rules! impl_iterator_indirect {
-    ($name:ident, $item:ident) => (
+    ($name:ident, $item:ident) => {
         impl<'a> Iterator for $name<'a> {
-            type Item = $item<'a>;
-            fn next(&mut self) -> Option<$item<'a>> {
-                if self.idx < self.len as isize {
-                    let item = $item::from_raw(unsafe { *self.ptr.offset(self.idx) });
-                    self.idx = self.idx + 1;
-                    Some(item)
+            type Item = &'a $item;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.len > 0 {
+                    unsafe {
+                        let item = $item::from_raw(*self.ptr);
+
+                        self.ptr = self.ptr.offset(1);
+                        self.len -= 1;
+
+                        Some(item)
+                    }
                 } else {
                     None
                 }
@@ -58,64 +71,88 @@ macro_rules! impl_iterator_indirect {
         }
 
         impl<'a> ExactSizeIterator for $name<'a> {
-            fn len(&self) -> usize { self.len }
+            fn len(&self) -> usize {
+                self.len
+            }
         }
-    )
+    };
 }
 
 macro_rules! impl_iterator_pod {
-    ($name:ident, $item:ident) => (
+    ($name:ident, $item:ident) => {
         impl<'a> Iterator for $name<'a> {
             type Item = $item;
             fn next(&mut self) -> Option<$item> {
-                if self.idx < self.len as isize {
-                    let item = $item::from_raw(unsafe { self.ptr.offset(self.idx) });
-                    self.idx = self.idx + 1;
+                if self.len > 0 {
+                    let item = $item::from_raw(unsafe { *self.ptr });
+
+                    self.ptr = unsafe { self.ptr.offset(1) };
+                    self.len -= 1;
+
                     Some(item)
                 } else {
                     None
                 }
             }
         }
-    )
+    };
 }
 
 macro_rules! define_type {
     // Reference type
     ($(#[$type_attr:meta])* struct $name:ident(&$raw:ty)) => (
         $(#[$type_attr])*
-        pub struct $name<'a>(&'a $raw);
-
-        #[doc(hidden)]
-        impl<'a> $name<'a> {
-            pub fn from_raw(raw: *const $raw) -> $name<'a> {
-                unsafe { $name(&*raw) }
-            }
-            pub fn to_raw(&self) -> *const $raw {
-                self.0
-            }
-        }
-
-        impl<'a> ::std::ops::Deref for $name<'a> {
-            type Target = $raw;
-            fn deref<'b>(&'b self) -> &'b $raw { &self.0 }
-        }
-    );
-    // Non-reference type = POD
-    ($(#[$type_attr:meta])* struct $name:ident($raw:ty)) => (
-        $(#[$type_attr])*
+        #[repr(transparent)]
         pub struct $name($raw);
 
-        #[doc(hidden)]
         impl $name {
-            pub fn from_raw(raw: *const $raw) -> $name {
-                unsafe { $name(*raw) }
+            /// Create a borrow of this struct from a raw pointer
+            pub unsafe fn from_raw<'a>(raw: *const $raw) -> &'a $name {
+                ::std::mem::transmute(raw)
+            }
+
+            /// Convert a borrow of this struct to a raw pointer
+            pub fn to_raw(&self) -> *const $raw {
+                self.as_ref()
+            }
+
+            /// Get a pointer to the inner value
+            pub fn as_ref(&self) -> &$raw {
+                &self.0
             }
         }
 
         impl ::std::ops::Deref for $name {
             type Target = $raw;
-            fn deref<'a>(&'a self) -> &'a $raw { &self.0 }
+
+            fn deref(&self) -> &$raw {
+                self.as_ref()
+            }
+        }
+    );
+    // Non-reference type = POD
+    ($(#[$type_attr:meta])* struct $name:ident($raw:ty)) => (
+        $(#[$type_attr])*
+        pub struct $name(pub $raw);
+
+        impl $name {
+            /// Create this struct from the equivalent struct in assimp
+            pub fn from_raw(raw: $raw) -> $name {
+                $name(raw)
+            }
+
+            /// Convert this struct to the equivalent struct in assimp
+            pub fn to_raw(self) -> $raw {
+                self.0
+            }
+        }
+
+        impl ::std::ops::Deref for $name {
+            type Target = $raw;
+
+            fn deref(&self) -> &$raw {
+                &self.0
+            }
         }
     );
 }

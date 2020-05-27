@@ -18,8 +18,8 @@ use std::mem;
 use std::ptr;
 use std::str;
 
-use ffi::*;
 use ffi::config::*;
+use ffi::*;
 
 use math::matrix4::*;
 use scene::*;
@@ -32,7 +32,7 @@ use self::structs::*;
 /// See [module-level documentation](index.html) for examples.
 pub struct Importer {
     property_store: *mut AiPropertyStore,
-    flags: AiPostProcessSteps
+    flags: AiPostProcessSteps,
 }
 
 impl Importer {
@@ -40,7 +40,7 @@ impl Importer {
     pub fn new() -> Importer {
         Importer {
             property_store: unsafe { aiCreatePropertyStore() },
-            flags: AiPostProcessSteps::empty()
+            flags: AiPostProcessSteps::empty(),
         }
     }
 
@@ -56,10 +56,11 @@ impl Importer {
                 cstr.as_ptr(),
                 self.flags,
                 ptr::null_mut(),
-                self.property_store)
+                self.property_store,
+            )
         };
         if !raw_scene.is_null() {
-            Ok(Scene::from_raw(raw_scene))
+            unsafe { Ok(Scene::from_raw(raw_scene)) }
         } else {
             let error_str = unsafe { aiGetErrorString() };
             if error_str.is_null() {
@@ -69,7 +70,7 @@ impl Importer {
                     let cstr = CStr::from_ptr(error_str);
                     match str::from_utf8(cstr.to_bytes()) {
                         Ok(s) => Err(s),
-                        Err(_) => Err("Unknown error")
+                        Err(_) => Err("Unknown error"),
                     }
                 }
             }
@@ -88,10 +89,11 @@ impl Importer {
                 data.len() as u32,
                 self.flags,
                 ptr::null_mut(),
-                self.property_store)
+                self.property_store,
+            )
         };
         if !raw_scene.is_null() {
-            Ok(Scene::from_raw(raw_scene))
+            unsafe { Ok(Scene::from_raw(raw_scene)) }
         } else {
             let error_str = unsafe { aiGetErrorString() };
             if error_str.is_null() {
@@ -101,7 +103,7 @@ impl Importer {
                     let cstr = CStr::from_ptr(error_str);
                     match str::from_utf8(cstr.to_bytes()) {
                         Ok(s) => Err(s),
-                        Err(_) => Err("Unknown error")
+                        Err(_) => Err("Unknown error"),
                     }
                 }
             }
@@ -121,7 +123,7 @@ impl Importer {
     /// The new scene, with new post-processing steps applied. Note that it is possible for this
     /// method to fail, in which case the return value is `Err`.
     pub fn apply_postprocessing<'a>(&'a self, scene: Scene<'a>) -> Result<Scene, &str> {
-        let raw_scene = unsafe { aiApplyPostProcessing(scene.to_raw(), self.flags) };
+        let raw_scene = unsafe { aiApplyPostProcessing(&*scene, self.flags) };
         if !raw_scene.is_null() {
             // Return original scene, Assimp applies post-processing in-place so returning
             // a new scene object would cause the scene to get double-dropped.
@@ -167,19 +169,25 @@ impl Importer {
     /// Helper method to set an integer import property.
     fn set_int_property(&mut self, name: &str, value: i32) {
         let cstr = CString::new(name).unwrap();
-        unsafe { aiSetImportPropertyInteger(self.property_store, cstr.as_ptr(), value); }
+        unsafe {
+            aiSetImportPropertyInteger(self.property_store, cstr.as_ptr(), value);
+        }
     }
 
     /// Helper method to set a floating point import property.
     fn set_float_property(&mut self, name: &str, value: f32) {
         let cstr = CString::new(name).unwrap();
-        unsafe { aiSetImportPropertyFloat(self.property_store, cstr.as_ptr(), value); }
+        unsafe {
+            aiSetImportPropertyFloat(self.property_store, cstr.as_ptr(), value);
+        }
     }
 
     /// Helper method to set a 4x4 matrix import property.
     fn set_matrix_property(&mut self, name: &str, value: Matrix4x4) {
         let cstr = CString::new(name).unwrap();
-        unsafe { aiSetImportPropertyMatrix(self.property_store, cstr.as_ptr(), &*value); }
+        unsafe {
+            aiSetImportPropertyMatrix(self.property_store, cstr.as_ptr(), &*value);
+        }
     }
 
     /// Helper method to set a string import property.
@@ -268,7 +276,7 @@ impl Importer {
 
         self.set_import_flag(AIPROCESS_REMOVE_COMPONENT, args.enable);
         if args.enable {
-            let flags = args.components.iter().fold(0, |x, &c|
+            let flags = args.components.iter().fold(0, |x, &c| {
                 x | match c {
                     Normals => AICOMPONENT_NORMALS,
                     TangentsAndBitangents => AICOMPONENT_TANGENTS_AND_BITANGENTS,
@@ -280,9 +288,10 @@ impl Importer {
                     Lights => AICOMPONENT_LIGHTS,
                     Cameras => AICOMPONENT_CAMERAS,
                     Meshes => AICOMPONENT_MESHES,
-                    Materials => AICOMPONENT_MATERIALS
-                }.bits()
-            );
+                    Materials => AICOMPONENT_MATERIALS,
+                }
+                .bits()
+            });
             self.set_int_property(PP_RVC_FLAGS, flags as i32);
         }
     }
@@ -312,7 +321,8 @@ impl Importer {
                 self.flags.insert(AIPROCESS_GEN_NORMALS);
             }
         } else {
-            self.flags.remove(AIPROCESS_GEN_NORMALS | AIPROCESS_GEN_SMOOTH_NORMALS);
+            self.flags
+                .remove(AIPROCESS_GEN_NORMALS | AIPROCESS_GEN_SMOOTH_NORMALS);
         }
     }
 
@@ -479,22 +489,25 @@ impl Importer {
 
         self.set_import_flag(AIPROCESS_SORT_BY_PTYPE, args.enable);
         if args.enable {
-            let flags = args.remove.iter().fold(0, |x, &t|
+            let flags = args.remove.iter().fold(0, |x, &t| {
                 x | match t {
                     Point => AIPRIMITIVETYPE_POINT,
                     Line => AIPRIMITIVETYPE_LINE,
                     Triangle => AIPRIMITIVETYPE_TRIANGLE,
-                    Polygon => AIPRIMITIVETYPE_POLYGON
-                }.bits()
-            );
+                    Polygon => AIPRIMITIVETYPE_POLYGON,
+                }
+                .bits()
+            });
 
             // Removing all primitives is a bad thing and causes Assimp to segfault when
             // used in combination with `validate_data_structure` and `apply_postprocessing`.
-            if flags == (AIPRIMITIVETYPE_POINT |
-                         AIPRIMITIVETYPE_LINE |
-                         AIPRIMITIVETYPE_TRIANGLE |
-                         AIPRIMITIVETYPE_POLYGON)
-                         .bits() {
+            if flags
+                == (AIPRIMITIVETYPE_POINT
+                    | AIPRIMITIVETYPE_LINE
+                    | AIPRIMITIVETYPE_TRIANGLE
+                    | AIPRIMITIVETYPE_POLYGON)
+                    .bits()
+            {
                 panic!("Trying to remove all possible primitive types is illegal.");
             }
 
@@ -586,14 +599,15 @@ impl Importer {
 
         self.set_import_flag(AIPROCESS_TRANSFORM_UV_COORDS, args.enable);
         if args.enable {
-            let flags = args.flags.iter().fold(0, |x, &f|
+            let flags = args.flags.iter().fold(0, |x, &f| {
                 x | match f {
                     Scaling => AI_UVTRAFO_SCALING,
                     Rotation => AI_UVTRAFO_ROTATION,
                     Translation => AI_UVTRAFO_TRANSLATION,
-                    All => AI_UVTRAFO_ALL
-                }.bits()
-            );
+                    All => AI_UVTRAFO_ALL,
+                }
+                .bits()
+            });
             self.set_int_property(PP_TUV_EVALUATE, flags as i32);
         }
     }
@@ -1090,7 +1104,9 @@ impl Importer {
         unsafe { aiGetExtensionList(&mut ext_list) };
 
         let extensions = ext_list.as_ref().split(';');
-        extensions.map(|x| x.trim_left_matches("*.").to_owned()).collect()
+        extensions
+            .map(|x| x.trim_start_matches("*.").to_owned())
+            .collect()
     }
 }
 

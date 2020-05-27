@@ -9,8 +9,13 @@ define_type! {
 }
 
 impl Quaternion {
-    pub fn new(w: f32, x: f32, y: f32 ,z: f32) -> Quaternion {
-        Quaternion(AiQuaternion { w: w, x: x, y: y, z: z })
+    pub fn new(w: f32, x: f32, y: f32, z: f32) -> Quaternion {
+        Quaternion(AiQuaternion {
+            w: w,
+            x: x,
+            y: y,
+            z: z,
+        })
     }
 }
 

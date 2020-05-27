@@ -20,7 +20,7 @@ pub enum ComponentType {
     Lights,
     Cameras,
     Meshes,
-    Materials
+    Materials,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -28,7 +28,7 @@ pub enum UVTransformFlag {
     Scaling,
     Rotation,
     Translation,
-    All
+    All,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -36,9 +36,8 @@ pub enum PrimitiveType {
     Point,
     Line,
     Triangle,
-    Polygon
+    Polygon,
 }
-
 
 // Macro to simplify defining and structs and implementing Default trait
 // NOTE: pub keyword in field definition is to workaround rust issue #24189
