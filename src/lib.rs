@@ -36,7 +36,7 @@ fn str_to_aistring(val: &str) -> ffi::aiString {
 
     let mut data = [0u8; 1024];
 
-    data.copy_from_slice(bytes);
+    (&mut data[..bytes.len()]).copy_from_slice(bytes);
 
     let data = unsafe { std::mem::transmute(data) };
 
