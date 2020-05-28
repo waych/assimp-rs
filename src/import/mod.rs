@@ -5,7 +5,7 @@
 //!
 //! # Examples
 //! ```
-//! use assimp::import::Importer;
+//! use rust_assimp::import::Importer;
 //!
 //! fn main() {
 //!     let importer = Importer::new();
@@ -15,7 +15,7 @@
 
 use std::ffi::{CStr, CString};
 use std::mem;
-use std::ptr;
+use std::ptr::{self, NonNull};
 use std::str;
 
 use ffi::*;
@@ -58,7 +58,8 @@ impl Importer {
                 self.property_store,
             )
         };
-        if !raw_scene.is_null() {
+
+        if let Some(raw_scene) = NonNull::new(raw_scene as *mut _) {
             unsafe { Ok(Scene::from_raw(raw_scene)) }
         } else {
             let error_str = unsafe { aiGetErrorString() };
@@ -91,7 +92,8 @@ impl Importer {
                 self.property_store,
             )
         };
-        if !raw_scene.is_null() {
+
+        if let Some(raw_scene) = NonNull::new(raw_scene as *mut _) {
             unsafe { Ok(Scene::from_raw(raw_scene)) }
         } else {
             let error_str = unsafe { aiGetErrorString() };
@@ -274,31 +276,14 @@ impl Importer {
     /// them, so it's all for nothing. By using this step, unneeded components are excluded as early
     /// as possible, thus opening more room for internal optimizations.
     pub fn remove_component<F: Fn(&mut RemoveComponent)>(&mut self, closure: F) {
-        use self::structs::ComponentType::*;
-
         let mut args = RemoveComponent::default();
         closure(&mut args);
 
         self.set_import_flag(aiPostProcessSteps_aiProcess_RemoveComponent, args.enable);
         if args.enable {
-            let flags = args.components.iter().fold(0, |x, &c| {
-                x | match c {
-                    Normals => aiComponent_aiComponent_NORMALS,
-                    TangentsAndBitangents => aiComponent_aiComponent_TANGENTS_AND_BITANGENTS,
-                    Colors => aiComponent_aiComponent_COLORS,
-                    TexCoords => aiComponent_aiComponent_TEXCOORDS,
-                    BoneWeights => aiComponent_aiComponent_BONEWEIGHTS,
-                    Animations => aiComponent_aiComponent_ANIMATIONS,
-                    Textures => aiComponent_aiComponent_TEXTURES,
-                    Lights => aiComponent_aiComponent_LIGHTS,
-                    Cameras => aiComponent_aiComponent_CAMERAS,
-                    Meshes => aiComponent_aiComponent_MESHES,
-                    Materials => aiComponent_aiComponent_MATERIALS,
-                }
-            });
             self.set_int_property(
                 str::from_utf8(AI_CONFIG_PP_RVC_FLAGS).unwrap(),
-                flags as i32,
+                args.components.bits() as i32,
             );
         }
     }
@@ -528,36 +513,25 @@ impl Importer {
     /// # Panics
     /// Specifying all possible primitive types for removal is illegal and causes a panic.
     pub fn sort_by_primitive_type<F: Fn(&mut SortByPrimitiveType)>(&mut self, closure: F) {
-        use self::structs::PrimitiveType::*;
-
         let mut args = SortByPrimitiveType::default();
         closure(&mut args);
 
         self.set_import_flag(aiPostProcessSteps_aiProcess_SortByPType, args.enable);
         if args.enable {
-            let flags = args.remove.iter().fold(0, |x, &t| {
-                x | match t {
-                    Point => aiPrimitiveType_aiPrimitiveType_POINT,
-                    Line => aiPrimitiveType_aiPrimitiveType_LINE,
-                    Triangle => aiPrimitiveType_aiPrimitiveType_TRIANGLE,
-                    Polygon => aiPrimitiveType_aiPrimitiveType_POLYGON,
-                }
-            });
-
             // Removing all primitives is a bad thing and causes Assimp to segfault when
             // used in combination with `validate_data_structure` and `apply_postprocessing`.
-            if flags
-                == (aiPrimitiveType_aiPrimitiveType_POINT
-                    | aiPrimitiveType_aiPrimitiveType_LINE
-                    | aiPrimitiveType_aiPrimitiveType_TRIANGLE
-                    | aiPrimitiveType_aiPrimitiveType_POLYGON)
+            if args.remove
+                == (PrimitiveTypes::POINT
+                    | PrimitiveTypes::LINE
+                    | PrimitiveTypes::TRIANGLE
+                    | PrimitiveTypes::POLYGON)
             {
                 panic!("Trying to remove all possible primitive types is illegal.");
             }
 
             self.set_int_property(
                 str::from_utf8(AI_CONFIG_PP_SBP_REMOVE).unwrap(),
-                flags as i32,
+                args.remove.bits() as i32,
             );
         }
     }
@@ -642,24 +616,14 @@ impl Importer {
     /// UV transformations are usually implemented in real-time apps by transforming texture
     /// coordinates at vertex shader stage with a 3x3 (homogenous) transformation matrix.
     pub fn transform_uv_coords<F: Fn(&mut TransformUVCoords)>(&mut self, closure: F) {
-        use self::structs::UVTransformFlag::*;
-
         let mut args = TransformUVCoords::default();
         closure(&mut args);
 
         self.set_import_flag(aiPostProcessSteps_aiProcess_TransformUVCoords, args.enable);
         if args.enable {
-            let flags = args.flags.iter().fold(0, |x, &f| {
-                x | match f {
-                    Scaling => AI_UVTRAFO_SCALING,
-                    Rotation => AI_UVTRAFO_ROTATION,
-                    Translation => AI_UVTRAFO_TRANSLATION,
-                    All => AI_UVTRAFO_ALL,
-                }
-            });
             self.set_int_property(
                 str::from_utf8(AI_CONFIG_PP_TUV_EVALUATE).unwrap(),
-                flags as i32,
+                args.flags.bits() as i32,
             );
         }
     }

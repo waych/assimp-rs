@@ -1,5 +1,5 @@
-extern crate assimp;
 extern crate cgmath;
+extern crate rust_assimp as assimp;
 #[macro_use]
 extern crate glium;
 
@@ -19,6 +19,7 @@ fn main() {
         position: [f32; 3],
         normal: [f32; 3],
     }
+
     implement_vertex!(Vertex3, position, normal);
 
     // Setup logging

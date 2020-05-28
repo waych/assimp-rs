@@ -1,4 +1,4 @@
-use std::{ffi::CStr, slice::from_raw_parts};
+use std::{ffi::CStr, ptr::NonNull, slice::from_raw_parts};
 
 use ffi::{aiMetadata, aiMetadataEntry, aiNode, aiString, aiVector3D};
 
@@ -26,11 +26,7 @@ impl Node {
 
     /// Return the parent of this node. Returns `None` if this node is the root node.
     pub fn parent(&self) -> Option<&Node> {
-        if !self.mParent.is_null() {
-            unsafe { Some(Node::from_raw(self.mParent)) }
-        } else {
-            None
-        }
+        unsafe { Some(Node::from_raw(NonNull::new(self.mParent)?)) }
     }
 
     /// Returns the number of child nodes.
@@ -41,7 +37,7 @@ impl Node {
     /// Returns a vector containing all of the child nodes under this node.
     pub fn child_iter(&self) -> NodeIter {
         NodeIter::new(
-            self.mChildren as *const *const aiNode,
+            NonNull::new(self.mChildren as *mut *const aiNode),
             self.mNumChildren as usize,
         )
     }
@@ -58,6 +54,8 @@ impl Node {
         unsafe { from_raw_parts(self.mMeshes, len) }
     }
 
+    /// Any custom metadata for this node - for example, the importer for HL1 `.mdl` files
+    /// will store hitbox information here.
     pub fn metadata(&self) -> Metadata<'_> {
         unsafe { Metadata::from_raw(self.mMetaData) }
     }
@@ -99,10 +97,23 @@ impl<'a> Iterator for Metadata<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.len() > 0 {
-            let key =
-                unsafe { crate::aistring_to_cstr(&*self.meta.mKeys.offset(self.index as isize)) };
-            let value =
-                unsafe { MetadataEntry::from_raw(self.meta.mValues.offset(self.index as isize)) };
+            let key = unsafe {
+                crate::aistring_to_cstr(
+                    &*NonNull::new(
+                        NonNull::new(self.meta.mKeys)?
+                            .as_ptr()
+                            .offset(self.index as isize),
+                    )?
+                    .as_ptr(),
+                )
+            };
+            let value = unsafe {
+                MetadataEntry::from_raw(NonNull::new(
+                    NonNull::new(self.meta.mValues)?
+                        .as_ptr()
+                        .offset(self.index as isize),
+                )?)
+            };
 
             self.index += 1;
 

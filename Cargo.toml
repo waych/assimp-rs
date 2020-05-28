@@ -1,22 +1,26 @@
 [package]
-name = "assimp"
-version = "0.4.0"
-authors = ["Lee Jeffery <lee@leejeffery.co.uk>"]
+name = "rust-assimp"
+version = "0.1.0"
+authors = ["Lee Jeffery <lee@leejeffery.co.uk>", "Jack Fransham"]
 edition = "2018"
 
-description = "Rust bindings for the Assimp library"
-repository = "https://github.com/Eljay/assimp-rs"
+description = "Rust bindings for the Assimp (Open Asset Import) library, for loading 3D assets"
+repository = "https://github.com/Vurich/assimp-rs"
 
 license = "MIT"
 readme = "README.md"
 
 [dependencies]
 assimp-sys = { path = "./assimp-sys/" }
+bitflags = "1.2"
+
+[features]
+default = ["cgmath"]
 
 [dependencies.cgmath]
-version = "0.15.0"
+version = "0.17.0"
 optional = true
 
 [dev-dependencies]
 glium = "0.18.0"
-cgmath = "0.15.0"
+cgmath = "0.17.0"

@@ -4,39 +4,58 @@ use ffi::*;
 
 use crate::math::Matrix4x4;
 
-/// Enumerates components of the Scene and Mesh data structures that can be excluded from the import
-/// using the `remove_component` step.
-///
-/// See `Importer::remove_component` for more details.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ComponentType {
-    Normals,
-    TangentsAndBitangents,
-    Colors,
-    TexCoords,
-    BoneWeights,
-    Animations,
-    Textures,
-    Lights,
-    Cameras,
-    Meshes,
-    Materials,
+bitflags::bitflags! {
+    /// Enumerates components of the Scene and Mesh data structures that can be excluded from the import
+    /// using the `remove_component` step.
+    ///
+    /// See `Importer::remove_component` for more details.
+    #[derive(Default)]
+    pub struct ComponentTypes: aiComponent {
+        const NORMALS                 = aiComponent_aiComponent_NORMALS;
+        const TANGENTS_AND_BITANGENTS = aiComponent_aiComponent_TANGENTS_AND_BITANGENTS;
+        const COLORS                  = aiComponent_aiComponent_COLORS;
+        const TEX_COORDS              = aiComponent_aiComponent_TEXCOORDS;
+        const BONE_WEIGHTS            = aiComponent_aiComponent_BONEWEIGHTS;
+        const ANIMATIONS              = aiComponent_aiComponent_ANIMATIONS;
+        const TEXTURES                = aiComponent_aiComponent_TEXTURES;
+        const LIGHTS                  = aiComponent_aiComponent_LIGHTS;
+        const CAMERAS                 = aiComponent_aiComponent_CAMERAS;
+        const MESHES                  = aiComponent_aiComponent_MESHES;
+        const MATERIALS               = aiComponent_aiComponent_MATERIALS;
+    }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UVTransformFlag {
-    Scaling,
-    Rotation,
-    Translation,
-    All,
+bitflags::bitflags! {
+    #[derive(Default)]
+    pub struct UVTransformFlags: u32 {
+        const SCALING     = AI_UVTRAFO_SCALING;
+        const ROTATION    = AI_UVTRAFO_ROTATION;
+        const TRANSLATION = AI_UVTRAFO_TRANSLATION;
+        const ALL         = AI_UVTRAFO_ALL;
+    }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum PrimitiveType {
-    Point,
-    Line,
-    Triangle,
-    Polygon,
+bitflags::bitflags! {
+    /// A bitset of all of the primitive types that are used for the faces of a mesh.
+    #[derive(Default)]
+    pub struct PrimitiveTypes: aiPrimitiveType {
+        /// Just a single point - a `POINT`-type face contains precisely one index
+        const POINT    = aiPrimitiveType_aiPrimitiveType_POINT;
+        /// A line - a `LINE`-type face contains precisely two indices
+        const LINE     = aiPrimitiveType_aiPrimitiveType_LINE;
+        /// A triangle - by default the winding order is counter-clockwise (formats
+        /// that wind clockwise will be converted on import) but this can be changed
+        /// in the `Importer`. A `TRIANGLE`-type face contains precisely three
+        /// indices.
+        const TRIANGLE = aiPrimitiveType_aiPrimitiveType_TRIANGLE;
+        /// A polygon - like `TRIANGLE`, by default the winding order is
+        /// counter-clockwise. A `POLYGON`-type face can have any number of vertices,
+        /// and although the documentation isn't fully clear, it seems like it's
+        /// possible for polygons to be concave or otherwise degenerate. You can
+        /// convert all `POLYGON`-type faces to `TRIANGLE`-type faces by enabling
+        /// `triangulate` in the importer.
+        const POLYGON  = aiPrimitiveType_aiPrimitiveType_POLYGON;
+    }
 }
 
 // Macro to simplify defining and structs and implementing Default trait
@@ -77,7 +96,7 @@ struct_with_defaults! {
     /// Arguments for `remove_component` post-process step.
     struct RemoveComponent {
         /// Specify which components to remove. Default: none
-        pub components: Vec<ComponentType> = Vec::new()
+        pub components: ComponentTypes = Default::default()
     }
 }
 
@@ -149,7 +168,7 @@ struct_with_defaults! {
     /// Arguments for `sort_by_primitive_type` post-process step.
     struct SortByPrimitiveType {
         /// List of primitive types to remove. Default: none
-        pub remove: Vec<PrimitiveType> = Vec::new()
+        pub remove: PrimitiveTypes = Default::default()
     }
 }
 
@@ -173,7 +192,7 @@ struct_with_defaults! {
     /// Arguments for `transform_uv_coords` post-process step.
     struct TransformUVCoords {
         /// Specify which UV transforms to evaluate. Default: all
-        pub flags: Vec<UVTransformFlag> = vec![UVTransformFlag::All]
+        pub flags: UVTransformFlags = UVTransformFlags::ALL
     }
 }
 

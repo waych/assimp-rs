@@ -1,7 +1,6 @@
-use ffi::aiAnimation;
-use ffi::aiNodeAnim;
-use ffi::aiQuatKey;
-use ffi::aiVectorKey;
+use ffi::{aiAnimation, aiNodeAnim, aiQuatKey, aiVectorKey};
+
+use std::ptr::NonNull;
 
 define_type_and_iterator_indirect! {
     /// Animation type (not yet implemented)
@@ -34,21 +33,39 @@ define_type_and_iterator_indirect! {
 impl NodeAnim {
     pub fn get_position_key(&self, id: usize) -> Option<&VectorKey> {
         if id < self.mNumPositionKeys as usize {
-            unsafe { Some(VectorKey::from_raw(self.mPositionKeys.offset(id as isize))) }
+            unsafe {
+                Some(VectorKey::from_raw(NonNull::new(
+                    NonNull::new(self.mPositionKeys)?
+                        .as_ptr()
+                        .offset(id as isize),
+                )?))
+            }
         } else {
             None
         }
     }
     pub fn get_rotation_key(&self, id: usize) -> Option<&QuatKey> {
         if id < self.mNumRotationKeys as usize {
-            unsafe { Some(QuatKey::from_raw(self.mRotationKeys.offset(id as isize))) }
+            unsafe {
+                Some(QuatKey::from_raw(NonNull::new(
+                    NonNull::new(self.mRotationKeys)?
+                        .as_ptr()
+                        .offset(id as isize),
+                )?))
+            }
         } else {
             None
         }
     }
     pub fn get_scaling_key(&self, id: usize) -> Option<&VectorKey> {
         if id < self.mNumScalingKeys as usize {
-            unsafe { Some(VectorKey::from_raw(self.mScalingKeys.offset(id as isize))) }
+            unsafe {
+                Some(VectorKey::from_raw(NonNull::new(
+                    NonNull::new(self.mScalingKeys)?
+                        .as_ptr()
+                        .offset(id as isize),
+                )?))
+            }
         } else {
             None
         }
@@ -58,7 +75,11 @@ impl NodeAnim {
 impl Animation {
     pub fn get_node_anim(&self, id: usize) -> Option<&NodeAnim> {
         if id < self.mNumChannels as usize {
-            unsafe { Some(NodeAnim::from_raw(*(self.mChannels.offset(id as isize)))) }
+            unsafe {
+                Some(NodeAnim::from_raw(NonNull::new(
+                    *(NonNull::new(self.mChannels)?.as_ptr().offset(id as isize)),
+                )?))
+            }
         } else {
             None
         }

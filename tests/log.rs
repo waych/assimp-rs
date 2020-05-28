@@ -1,4 +1,4 @@
-extern crate assimp;
+extern crate rust_assimp as assimp;
 
 use assimp::Importer;
 use assimp::LogStream;

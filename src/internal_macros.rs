@@ -6,15 +6,15 @@ macro_rules! define_iter {
     ($(#[$iter_attr:meta])* struct $name:ident -> $raw:ty) => (
         $(#[$iter_attr])*
         pub struct $name<'a> {
-            ptr: $raw,
+            ptr: Option<$raw>,
             len: usize,
             _mk: ::std::marker::PhantomData<&'a ()>
         }
 
         #[doc(hidden)]
         impl<'a> $name<'a> {
-            pub fn new(ptr: $raw, len: usize) -> $name<'a> {
-                $name { ptr: ptr, len: len, _mk: ::std::marker::PhantomData }
+            pub fn new(ptr: Option<$raw>, len: usize) -> $name<'a> {
+                $name { ptr, len: len, _mk: ::std::marker::PhantomData }
             }
         }
     )
@@ -28,9 +28,11 @@ macro_rules! impl_iterator {
             fn next(&mut self) -> Option<&'a $item> {
                 if self.len > 0 {
                     unsafe {
-                        let item = $item::from_raw(self.ptr);
+                        let ptr = self.ptr?;
 
-                        self.ptr = self.ptr.offset(1);
+                        let item = $item::from_raw(ptr);
+
+                        self.ptr = ::std::ptr::NonNull::new(ptr.as_ptr().offset(1) as *mut _);
                         self.len -= 1;
 
                         Some(item)
@@ -57,9 +59,12 @@ macro_rules! impl_iterator_indirect {
             fn next(&mut self) -> Option<Self::Item> {
                 if self.len > 0 {
                     unsafe {
-                        let item = $item::from_raw(*self.ptr);
+                        let ptr = self.ptr?;
 
-                        self.ptr = self.ptr.offset(1);
+                        let item =
+                            $item::from_raw(::std::ptr::NonNull::new(*ptr.as_ptr() as *mut _)?);
+
+                        self.ptr = ::std::ptr::NonNull::new(ptr.as_ptr().offset(1) as *mut _);
                         self.len -= 1;
 
                         Some(item)
@@ -82,11 +87,15 @@ macro_rules! impl_iterator_pod {
     ($name:ident, $item:ident) => {
         impl<'a> Iterator for $name<'a> {
             type Item = $item;
+
             fn next(&mut self) -> Option<$item> {
                 if self.len > 0 {
-                    let item = $item::from_raw(unsafe { *self.ptr });
+                    let ptr = self.ptr?;
 
-                    self.ptr = unsafe { self.ptr.offset(1) };
+                    let item = $item::from_raw(unsafe { *ptr.as_ptr() });
+
+                    self.ptr =
+                        unsafe { ::std::ptr::NonNull::new(ptr.as_ptr().offset(1) as *mut _) };
                     self.len -= 1;
 
                     Some(item)
@@ -107,13 +116,13 @@ macro_rules! define_type {
 
         impl $name {
             /// Create a borrow of this struct from a raw pointer
-            pub unsafe fn from_raw<'a>(raw: *const $raw) -> &'a $name {
+            pub unsafe fn from_raw<'a>(raw: ::std::ptr::NonNull<$raw>) -> &'a $name {
                 ::std::mem::transmute(raw)
             }
 
             /// Convert a borrow of this struct to a raw pointer
-            pub fn to_raw(&self) -> *const $raw {
-                self.as_ref()
+            pub fn to_raw(&self) -> ::std::ptr::NonNull<$raw> {
+                self.as_ref().into()
             }
 
             /// Get a pointer to the inner value
@@ -163,7 +172,7 @@ macro_rules! define_type_and_iterator {
         $(#[$iter_attr:meta])* struct $iter_name:ident
     ) => (
         define_type!($(#[$type_attr])* struct $type_name(&$raw));
-        define_iter!($(#[$iter_attr])* struct $iter_name -> *const $raw);
+        define_iter!($(#[$iter_attr])* struct $iter_name -> ::std::ptr::NonNull<$raw>);
         impl_iterator!($iter_name, $type_name);
     );
     (
@@ -171,7 +180,7 @@ macro_rules! define_type_and_iterator {
         $(#[$iter_attr:meta])* struct $iter_name:ident
     ) => (
         define_type!($(#[$type_attr])* struct $type_name($raw));
-        define_iter!($(#[$iter_attr])* struct $iter_name -> *const $raw);
+        define_iter!($(#[$iter_attr])* struct $iter_name -> ::std::ptr::NonNull<$raw>);
         impl_iterator_pod!($iter_name, $type_name);
     );
 }
@@ -182,7 +191,7 @@ macro_rules! define_type_and_iterator_indirect {
         $(#[$iter_attr:meta])* struct $iter_name:ident
     ) => (
         define_type!($(#[$type_attr])* struct $type_name(&$raw));
-        define_iter!($(#[$iter_attr])* struct $iter_name -> *const *const $raw);
+        define_iter!($(#[$iter_attr])* struct $iter_name -> ::std::ptr::NonNull<*const $raw>);
         impl_iterator_indirect!($iter_name, $type_name);
     );
 }

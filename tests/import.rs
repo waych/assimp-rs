@@ -1,4 +1,4 @@
-extern crate assimp;
+extern crate rust_assimp as assimp;
 
 use assimp::Importer;
 
@@ -34,11 +34,14 @@ fn test_apply_postprocessing_success() {
 #[test]
 #[should_panic]
 fn test_sort_by_primitive_type_panic() {
-    use assimp::import::structs::PrimitiveType::*;
+    use assimp::import::structs::PrimitiveTypes;
     let mut importer = Importer::new();
-    let all = vec![Point, Line, Triangle, Polygon];
+    let all = PrimitiveTypes::POINT
+        | PrimitiveTypes::LINE
+        | PrimitiveTypes::TRIANGLE
+        | PrimitiveTypes::POLYGON;
     importer.sort_by_primitive_type(|x| {
         x.enable = true;
-        x.remove = all.clone()
+        x.remove = all;
     });
 }

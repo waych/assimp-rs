@@ -1,10 +1,10 @@
 //! # assimp - Open Asset Import Library
 //!
-//! Bindings for the [Assimp](http://assimp.sourceforge.net) library.
+//! Bindings for the [Assimp](http://assimp.org/) library.
+
+#![warn(missing_docs)]
 
 extern crate assimp_sys as ffi;
-#[cfg(feature = "cgmath")]
-extern crate cgmath;
 
 pub use import::Importer;
 pub use log::LogStream;
