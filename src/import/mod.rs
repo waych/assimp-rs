@@ -18,11 +18,10 @@ use std::mem;
 use std::ptr;
 use std::str;
 
-use ffi::config::*;
 use ffi::*;
 
-use math::matrix4::*;
-use scene::*;
+use crate::math::matrix4::*;
+use crate::scene::*;
 
 pub mod structs;
 use self::structs::*;
@@ -31,8 +30,8 @@ use self::structs::*;
 ///
 /// See [module-level documentation](index.html) for examples.
 pub struct Importer {
-    property_store: *mut AiPropertyStore,
-    flags: AiPostProcessSteps,
+    property_store: *mut aiPropertyStore,
+    flags: aiPostProcessSteps,
 }
 
 impl Importer {
@@ -40,7 +39,7 @@ impl Importer {
     pub fn new() -> Importer {
         Importer {
             property_store: unsafe { aiCreatePropertyStore() },
-            flags: AiPostProcessSteps::empty(),
+            flags: 0,
         }
     }
 
@@ -141,7 +140,7 @@ impl Importer {
     /// If enabled, measures the time needed for each part of the loading process (i.e. IO time,
     /// importing, postprocessing, ..) and dumps these timings to the output log.
     pub fn measure_time(&mut self, enable: bool) {
-        self.set_bool_property(GLOB_MEASURE_TIME, enable);
+        self.set_bool_property(str::from_utf8(AI_CONFIG_GLOB_MEASURE_TIME).unwrap(), enable);
     }
 
     /// A hint to Assimp to favour speed against import quality.
@@ -149,15 +148,15 @@ impl Importer {
     /// Enabling this option may result in faster loading, but it needn't. It represents just a hint
     /// to loaders and post-processing steps to use faster code paths, if possible.
     pub fn favour_speed(&mut self, enable: bool) {
-        self.set_bool_property(FAVOUR_SPEED, enable);
+        self.set_bool_property(str::from_utf8(AI_CONFIG_FAVOUR_SPEED).unwrap(), enable);
     }
 
     /// Helper method to set or clear the appropriate import flag
-    fn set_import_flag(&mut self, flag: AiPostProcessSteps, value: bool) {
+    fn set_import_flag(&mut self, flag: aiPostProcessSteps, value: bool) {
         if value {
-            self.flags.insert(flag)
+            self.flags |= flag;
         } else {
-            self.flags.remove(flag)
+            self.flags &= !flag;
         }
     }
 
@@ -193,7 +192,7 @@ impl Importer {
     /// Helper method to set a string import property.
     fn set_string_property(&mut self, name: &str, value: &str) {
         let cstr = CString::new(name).unwrap();
-        let aistr: AiString = From::from(value);
+        let aistr = crate::str_to_aistring(value);
         unsafe { aiSetImportPropertyString(self.property_store, cstr.as_ptr(), &aistr) }
     }
 
@@ -207,10 +206,16 @@ impl Importer {
         let mut args = CalcTangentSpace::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_CALC_TANGENT_SPACE, args.enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_CalcTangentSpace, args.enable);
         if args.enable {
-            self.set_float_property(PP_CT_MAX_SMOOTHING_ANGLE, args.max_smoothing_angle);
-            self.set_int_property(PP_CT_TEXTURE_CHANNEL_INDEX, args.texture_channel);
+            self.set_float_property(
+                str::from_utf8(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE).unwrap(),
+                args.max_smoothing_angle,
+            );
+            self.set_int_property(
+                str::from_utf8(AI_CONFIG_PP_CT_TEXTURE_CHANNEL_INDEX).unwrap(),
+                args.texture_channel,
+            );
         }
     }
 
@@ -222,7 +227,7 @@ impl Importer {
     /// If this flag is not specified</b>, no vertices are referenced by more than one face and
     /// no index buffer is required for rendering.
     pub fn join_identical_vertices(&mut self, enable: bool) {
-        self.set_import_flag(AIPROCESS_JOIN_IDENTICAL_VERTICES, enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_JoinIdenticalVertices, enable);
     }
 
     /// Converts all the imported data to a left-handed coordinate space.
@@ -234,7 +239,7 @@ impl Importer {
     ///
     /// You'll probably want to consider this flag if you use Direct3D for rendering.
     pub fn make_left_handed(&mut self, enable: bool) {
-        self.set_import_flag(AIPROCESS_MAKE_LEFT_HANDED, enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_MakeLeftHanded, enable);
     }
 
     /// Triangulates all faces of all meshes.
@@ -247,7 +252,7 @@ impl Importer {
     /// * Enable both `triangulate` and `sort_by_primitive_type`
     /// * Ignore all point and line meshes when you process assimp's output
     pub fn triangulate(&mut self, enable: bool) {
-        self.set_import_flag(AIPROCESS_TRIANGULATE, enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_Triangulate, enable);
     }
 
     /// Removes some parts of the data structure (animations, materials, light sources, cameras,
@@ -274,25 +279,27 @@ impl Importer {
         let mut args = RemoveComponent::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_REMOVE_COMPONENT, args.enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_RemoveComponent, args.enable);
         if args.enable {
             let flags = args.components.iter().fold(0, |x, &c| {
                 x | match c {
-                    Normals => AICOMPONENT_NORMALS,
-                    TangentsAndBitangents => AICOMPONENT_TANGENTS_AND_BITANGENTS,
-                    Colors => AICOMPONENT_COLORS,
-                    TexCoords => AICOMPONENT_TEXCOORDS,
-                    BoneWeights => AICOMPONENT_BONE_WEIGHTS,
-                    Animations => AICOMPONENT_ANIMATIONS,
-                    Textures => AICOMPONENT_TEXTURES,
-                    Lights => AICOMPONENT_LIGHTS,
-                    Cameras => AICOMPONENT_CAMERAS,
-                    Meshes => AICOMPONENT_MESHES,
-                    Materials => AICOMPONENT_MATERIALS,
+                    Normals => aiComponent_aiComponent_NORMALS,
+                    TangentsAndBitangents => aiComponent_aiComponent_TANGENTS_AND_BITANGENTS,
+                    Colors => aiComponent_aiComponent_COLORS,
+                    TexCoords => aiComponent_aiComponent_TEXCOORDS,
+                    BoneWeights => aiComponent_aiComponent_BONEWEIGHTS,
+                    Animations => aiComponent_aiComponent_ANIMATIONS,
+                    Textures => aiComponent_aiComponent_TEXTURES,
+                    Lights => aiComponent_aiComponent_LIGHTS,
+                    Cameras => aiComponent_aiComponent_CAMERAS,
+                    Meshes => aiComponent_aiComponent_MESHES,
+                    Materials => aiComponent_aiComponent_MATERIALS,
                 }
-                .bits()
             });
-            self.set_int_property(PP_RVC_FLAGS, flags as i32);
+            self.set_int_property(
+                str::from_utf8(AI_CONFIG_PP_RVC_FLAGS).unwrap(),
+                flags as i32,
+            );
         }
     }
 
@@ -315,14 +322,17 @@ impl Importer {
 
         if args.enable {
             if args.smooth {
-                self.flags.insert(AIPROCESS_GEN_SMOOTH_NORMALS);
-                self.set_float_property(PP_GSN_MAX_SMOOTHING_ANGLE, args.max_smoothing_angle);
+                self.flags |= aiPostProcessSteps_aiProcess_GenSmoothNormals;
+                self.set_float_property(
+                    str::from_utf8(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE).unwrap(),
+                    args.max_smoothing_angle,
+                );
             } else {
-                self.flags.insert(AIPROCESS_GEN_NORMALS);
+                self.flags |= aiPostProcessSteps_aiProcess_GenNormals;
             }
         } else {
-            self.flags
-                .remove(AIPROCESS_GEN_NORMALS | AIPROCESS_GEN_SMOOTH_NORMALS);
+            self.flags &= !(aiPostProcessSteps_aiProcess_GenNormals
+                | aiPostProcessSteps_aiProcess_GenSmoothNormals);
         }
     }
 
@@ -342,10 +352,16 @@ impl Importer {
         let mut args = SplitLargeMeshes::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_SPLIT_LARGE_MESHES, args.enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_SplitLargeMeshes, args.enable);
         if args.enable {
-            self.set_int_property(PP_SLM_TRIANGLE_LIMIT, args.triangle_limit);
-            self.set_int_property(PP_SLM_VERTEX_LIMIT, args.vertex_limit);
+            self.set_int_property(
+                str::from_utf8(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT).unwrap(),
+                args.triangle_limit as _,
+            );
+            self.set_int_property(
+                str::from_utf8(AI_CONFIG_PP_SLM_VERTEX_LIMIT).unwrap(),
+                args.vertex_limit as _,
+            );
         }
     }
 
@@ -365,12 +381,27 @@ impl Importer {
         let mut args = PreTransformVertices::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_PRE_TRANSFORM_VERTICES, args.enable);
+        self.set_import_flag(
+            aiPostProcessSteps_aiProcess_PreTransformVertices,
+            args.enable,
+        );
         if args.enable {
-            self.set_bool_property(PP_PTV_KEEP_HIERARCHY, args.keep_hierarchy);
-            self.set_bool_property(PP_PTV_NORMALIZE, args.normalize);
-            self.set_bool_property(PP_PTV_ADD_ROOT_TRANSFORMATION, args.add_root_transformation);
-            self.set_matrix_property(PP_PTV_ROOT_TRANSFORMATION, args.root_transformation);
+            self.set_bool_property(
+                str::from_utf8(AI_CONFIG_PP_PTV_KEEP_HIERARCHY).unwrap(),
+                args.keep_hierarchy,
+            );
+            self.set_bool_property(
+                str::from_utf8(AI_CONFIG_PP_PTV_NORMALIZE).unwrap(),
+                args.normalize,
+            );
+            self.set_bool_property(
+                str::from_utf8(AI_CONFIG_PP_PTV_ADD_ROOT_TRANSFORMATION).unwrap(),
+                args.add_root_transformation,
+            );
+            self.set_matrix_property(
+                str::from_utf8(AI_CONFIG_PP_PTV_ROOT_TRANSFORMATION).unwrap(),
+                args.root_transformation,
+            );
         }
     }
 
@@ -387,9 +418,12 @@ impl Importer {
         let mut args = LimitBoneWeights::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_LIMIT_BONE_WEIGHTS, args.enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_LimitBoneWeights, args.enable);
         if args.enable {
-            self.set_int_property(PP_LBW_MAX_WEIGHTS, args.max_weights);
+            self.set_int_property(
+                str::from_utf8(AI_CONFIG_PP_LBW_MAX_WEIGHTS).unwrap(),
+                args.max_weights as _,
+            );
         }
     }
 
@@ -413,7 +447,7 @@ impl Importer {
     ///
     /// This post-processing step is not time-consuming. Its use is not compulsory, but recommended.
     pub fn validate_data_structure(&mut self, enable: bool) {
-        self.set_import_flag(AIPROCESS_VALIDATE_DATA_STRUCTURE, enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_ValidateDataStructure, enable);
     }
 
     /// Reorders triangles for better vertex cache locality.
@@ -428,9 +462,15 @@ impl Importer {
         let mut args = ImproveCacheLocality::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_IMPROVE_CACHE_LOCALITY, args.enable);
+        self.set_import_flag(
+            aiPostProcessSteps_aiProcess_ImproveCacheLocality,
+            args.enable,
+        );
         if args.enable {
-            self.set_int_property(PP_ICL_PTCACHE_SIZE, args.cache_size);
+            self.set_int_property(
+                str::from_utf8(AI_CONFIG_PP_ICL_PTCACHE_SIZE).unwrap(),
+                args.cache_size as i32,
+            );
         }
     }
 
@@ -451,9 +491,15 @@ impl Importer {
         let mut args = RemoveRedundantMaterials::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_REMOVE_REDUNDANT_MATERIALS, args.enable);
+        self.set_import_flag(
+            aiPostProcessSteps_aiProcess_RemoveRedundantMaterials,
+            args.enable,
+        );
         if args.enable {
-            self.set_string_property(PP_RRM_EXCLUDE_LIST, &args.exclude_list);
+            self.set_string_property(
+                str::from_utf8(AI_CONFIG_PP_RRM_EXCLUDE_LIST).unwrap(),
+                &args.exclude_list,
+            );
         }
     }
 
@@ -467,7 +513,7 @@ impl Importer {
     /// The step inverts all in-facing normals. Generally it is recommended to enable this step,
     /// although the result is not always correct.
     pub fn fix_infacing_normals(&mut self, enable: bool) {
-        self.set_import_flag(AIPROCESS_FIX_INFACING_NORMALS, enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_FixInfacingNormals, enable);
     }
 
     /// This step splits meshes with more than one primitive type in homogeneous sub-meshes.
@@ -487,31 +533,32 @@ impl Importer {
         let mut args = SortByPrimitiveType::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_SORT_BY_PTYPE, args.enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_SortByPType, args.enable);
         if args.enable {
             let flags = args.remove.iter().fold(0, |x, &t| {
                 x | match t {
-                    Point => AIPRIMITIVETYPE_POINT,
-                    Line => AIPRIMITIVETYPE_LINE,
-                    Triangle => AIPRIMITIVETYPE_TRIANGLE,
-                    Polygon => AIPRIMITIVETYPE_POLYGON,
+                    Point => aiPrimitiveType_aiPrimitiveType_POINT,
+                    Line => aiPrimitiveType_aiPrimitiveType_LINE,
+                    Triangle => aiPrimitiveType_aiPrimitiveType_TRIANGLE,
+                    Polygon => aiPrimitiveType_aiPrimitiveType_POLYGON,
                 }
-                .bits()
             });
 
             // Removing all primitives is a bad thing and causes Assimp to segfault when
             // used in combination with `validate_data_structure` and `apply_postprocessing`.
             if flags
-                == (AIPRIMITIVETYPE_POINT
-                    | AIPRIMITIVETYPE_LINE
-                    | AIPRIMITIVETYPE_TRIANGLE
-                    | AIPRIMITIVETYPE_POLYGON)
-                    .bits()
+                == (aiPrimitiveType_aiPrimitiveType_POINT
+                    | aiPrimitiveType_aiPrimitiveType_LINE
+                    | aiPrimitiveType_aiPrimitiveType_TRIANGLE
+                    | aiPrimitiveType_aiPrimitiveType_POLYGON)
             {
                 panic!("Trying to remove all possible primitive types is illegal.");
             }
 
-            self.set_int_property(PP_SBP_REMOVE, flags as i32);
+            self.set_int_property(
+                str::from_utf8(AI_CONFIG_PP_SBP_REMOVE).unwrap(),
+                flags as i32,
+            );
         }
     }
 
@@ -540,9 +587,9 @@ impl Importer {
         let mut args = FindDegenerates::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_FIND_DEGENERATES, args.enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_FindDegenerates, args.enable);
         if args.enable {
-            self.set_bool_property(PP_FD_REMOVE, args.remove);
+            self.set_bool_property(str::from_utf8(AI_CONFIG_PP_FD_REMOVE).unwrap(), args.remove);
         }
     }
 
@@ -559,9 +606,12 @@ impl Importer {
         let mut args = FindInvalidData::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_FIND_INVALID_DATA, args.enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_FindInvalidData, args.enable);
         if args.enable {
-            self.set_float_property(PP_FID_ANIM_ACCURACY, args.accuracy);
+            self.set_float_property(
+                str::from_utf8(AI_CONFIG_PP_FID_ANIM_ACCURACY).unwrap(),
+                args.accuracy,
+            );
         }
     }
 
@@ -577,7 +627,7 @@ impl Importer {
     /// If this step is not requested, you'll need to process the `AI_MATKEY_MAPPING` material
     /// property in order to display all assets properly.
     pub fn gen_uv_coords(&mut self, enable: bool) {
-        self.set_import_flag(AIPROCESS_GEN_UV_COORDS, enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_GenUVCoords, enable);
     }
 
     /// This step applies per-texture UV transformations and bakes them into stand-alone vtexture
@@ -597,7 +647,7 @@ impl Importer {
         let mut args = TransformUVCoords::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_TRANSFORM_UV_COORDS, args.enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_TransformUVCoords, args.enable);
         if args.enable {
             let flags = args.flags.iter().fold(0, |x, &f| {
                 x | match f {
@@ -606,9 +656,11 @@ impl Importer {
                     Translation => AI_UVTRAFO_TRANSLATION,
                     All => AI_UVTRAFO_ALL,
                 }
-                .bits()
             });
-            self.set_int_property(PP_TUV_EVALUATE, flags as i32);
+            self.set_int_property(
+                str::from_utf8(AI_CONFIG_PP_TUV_EVALUATE).unwrap(),
+                flags as i32,
+            );
         }
     }
 
@@ -621,7 +673,7 @@ impl Importer {
     /// identical meshes with different materials are currently *not* joined, although this is
     /// planned for future versions.
     pub fn find_instances(&mut self, enable: bool) {
-        self.set_import_flag(AIPROCESS_FIND_INSTANCES, enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_FindInstances, enable);
     }
 
     /// A postprocessing step to reduce the number of meshes.
@@ -632,7 +684,7 @@ impl Importer {
     /// `optimize_graph`, if possible. The flag is fully compatible with both `split_large_meshes`
     /// and `sort_by_primitive_type`.
     pub fn optimize_meshes(&mut self, enable: bool) {
-        self.set_import_flag(AIPROCESS_OPTIMIZE_MESHES, enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_OptimizeMeshes, enable);
     }
 
     /// A postprocessing step to optimize the scene hierarchy.
@@ -658,9 +710,12 @@ impl Importer {
         let mut args = OptimizeGraph::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_OPTIMIZE_GRAPH, args.enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_OptimizeGraph, args.enable);
         if args.enable {
-            self.set_string_property(PP_OG_EXCLUDE_LIST, &args.exclude_list);
+            self.set_string_property(
+                str::from_utf8(AI_CONFIG_PP_OG_EXCLUDE_LIST).unwrap(),
+                &args.exclude_list,
+            );
         }
     }
 
@@ -679,7 +734,7 @@ impl Importer {
     ///
     /// You'll probably want to consider this flag if you use Direct3D for rendering.
     pub fn flip_uvs(&mut self, enable: bool) {
-        self.set_import_flag(AIPROCESS_FLIP_UVS, enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_FlipUVs, enable);
     }
 
     /// This step adjusts the output face winding order to be CW.
@@ -695,7 +750,7 @@ impl Importer {
     ///  x1
     /// ```
     pub fn flip_winding_order(&mut self, enable: bool) {
-        self.set_import_flag(AIPROCESS_FLIP_WINDING_ORDER, enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_FlipWindingOrder, enable);
     }
 
     /// This step splits meshes with many bones into sub-meshes so that each submesh has fewer or
@@ -704,9 +759,12 @@ impl Importer {
         let mut args = SplitByBoneCount::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_SPLIT_BY_BONE_COUNT, args.enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_SplitByBoneCount, args.enable);
         if args.enable {
-            self.set_int_property(PP_SBBC_MAX_BONES, args.max_bones);
+            self.set_int_property(
+                str::from_utf8(AI_CONFIG_PP_SBBC_MAX_BONES).unwrap(),
+                args.max_bones as _,
+            );
         }
     }
 
@@ -724,10 +782,16 @@ impl Importer {
         let mut args = Debone::default();
         closure(&mut args);
 
-        self.set_import_flag(AIPROCESS_DEBONE, args.enable);
+        self.set_import_flag(aiPostProcessSteps_aiProcess_Debone, args.enable);
         if args.enable {
-            self.set_float_property(PP_DB_THRESHOLD, args.threshold);
-            self.set_bool_property(PP_DB_ALL_OR_NONE, args.all_or_none);
+            self.set_float_property(
+                str::from_utf8(AI_CONFIG_PP_DB_THRESHOLD).unwrap(),
+                args.threshold as f32,
+            );
+            self.set_bool_property(
+                str::from_utf8(AI_CONFIG_PP_DB_ALL_OR_NONE).unwrap(),
+                args.all_or_none,
+            );
         }
     }
 
@@ -736,7 +800,10 @@ impl Importer {
     /// Skeleton dummy meshes are generated as a visualization aid in cases which the input data
     /// contains no geometry, but only animation data.
     pub fn import_no_skeleton_meshes(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_NO_SKELETON_MESHES, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_NO_SKELETON_MESHES).unwrap(),
+            enable,
+        );
     }
 
     /// Sets the colormap to be used to decode embedded textures in MDL (Quake or 3DGS) files.
@@ -747,7 +814,7 @@ impl Importer {
     ///
     /// Default: colormap.lmp
     pub fn import_mdl_colormap(&mut self, path: &str) {
-        self.set_string_property(IMPORT_MDL_COLORMAP, path);
+        self.set_string_property(str::from_utf8(AI_CONFIG_IMPORT_MDL_COLORMAP).unwrap(), path);
     }
 
     /// Set whether the FBX importer will merge all geometry layers present in the source file or
@@ -755,7 +822,10 @@ impl Importer {
     ///
     /// Default: true.
     pub fn fbx_read_all_geometry_layers(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_FBX_READ_ALL_GEOMETRY_LAYERS, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_ALL_GEOMETRY_LAYERS).unwrap(),
+            enable,
+        );
     }
 
     /// Set whether the FBX importer will read all materials present in the source file or take only
@@ -763,42 +833,60 @@ impl Importer {
     ///
     /// Default: false.
     pub fn fbx_read_all_materials(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_FBX_READ_ALL_MATERIALS, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_ALL_MATERIALS).unwrap(),
+            enable,
+        );
     }
 
     /// Set whether the FBX importer will read materials.
     ///
     /// Default: true.
     pub fn fbx_read_materials(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_FBX_READ_MATERIALS, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_MATERIALS).unwrap(),
+            enable,
+        );
     }
 
     /// Set whether the FBX importer will read embedded textures.
     ///
     /// Default: true.
     pub fn fbx_read_textures(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_FBX_READ_TEXTURES, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_TEXTURES).unwrap(),
+            enable,
+        );
     }
 
     /// Set whether the FBX importer will read cameras.
     ///
     /// Default: true.
     pub fn fbx_read_cameras(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_FBX_READ_CAMERAS, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_CAMERAS).unwrap(),
+            enable,
+        );
     }
 
     /// Set whether the FBX importer will read light sources.
     ///
     /// Default: true.
     pub fn fbx_read_lights(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_FBX_READ_LIGHTS, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_LIGHTS).unwrap(),
+            enable,
+        );
     }
 
     /// Set whether the FBX importer will read animations.
     ///
     /// Default: true.
     pub fn fbx_read_animations(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_FBX_READ_ANIMATIONS, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_ANIMATIONS).unwrap(),
+            enable,
+        );
     }
 
     /// Set whether the FBX importer will act in strict mode in which only FBX 2013 is supported and
@@ -807,7 +895,10 @@ impl Importer {
     ///
     /// Default: false.
     pub fn fbx_strict_mode(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_FBX_STRICT_MODE, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_FBX_STRICT_MODE).unwrap(),
+            enable,
+        );
     }
 
     /// Set whether the FBX importer will preserve pivot points for transformations (as extra
@@ -815,7 +906,10 @@ impl Importer {
     ///
     /// Default: true.
     pub fn fbx_preserve_pivots(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_FBX_PRESERVE_PIVOTS, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS).unwrap(),
+            enable,
+        );
     }
 
     /// Specifies whether the FBX importer will drop empty animation curves or animation curves
@@ -823,7 +917,10 @@ impl Importer {
     ///
     /// Default: true.
     pub fn fbx_optimize_empty_animation_curves(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_FBX_OPTIMIZE_EMPTY_ANIMATION_CURVES, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_FBX_OPTIMIZE_EMPTY_ANIMATION_CURVES).unwrap(),
+            enable,
+        );
     }
 
     /// Set the vertex animation keyframe to be imported
@@ -834,37 +931,58 @@ impl Importer {
     ///
     /// Default: first frame.
     pub fn global_keyframe(&mut self, value: i32) {
-        self.set_int_property(IMPORT_GLOBAL_KEYFRAME, value);
+        self.set_int_property(
+            str::from_utf8(AI_CONFIG_IMPORT_GLOBAL_KEYFRAME).unwrap(),
+            value,
+        );
     }
 
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MD3 importer.
     pub fn md3_keyframe(&mut self, value: i32) {
-        self.set_int_property(IMPORT_MD3_KEYFRAME, value);
+        self.set_int_property(
+            str::from_utf8(AI_CONFIG_IMPORT_MD3_KEYFRAME).unwrap(),
+            value,
+        );
     }
 
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MD2 importer.
     pub fn md2_keyframe(&mut self, value: i32) {
-        self.set_int_property(IMPORT_MD2_KEYFRAME, value);
+        self.set_int_property(
+            str::from_utf8(AI_CONFIG_IMPORT_MD2_KEYFRAME).unwrap(),
+            value,
+        );
     }
 
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MDL importer.
     pub fn mdl_keyframe(&mut self, value: i32) {
-        self.set_int_property(IMPORT_MDL_KEYFRAME, value);
+        self.set_int_property(
+            str::from_utf8(AI_CONFIG_IMPORT_MDL_KEYFRAME).unwrap(),
+            value,
+        );
     }
 
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MDC importer.
     pub fn mdc_keyframe(&mut self, value: i32) {
-        self.set_int_property(IMPORT_MDC_KEYFRAME, value);
+        self.set_int_property(
+            str::from_utf8(AI_CONFIG_IMPORT_MDC_KEYFRAME).unwrap(),
+            value,
+        );
     }
 
     /// Override [`global_keyframe`](#method.global_keyframe) property for the SMD importer.
     pub fn smd_keyframe(&mut self, value: i32) {
-        self.set_int_property(IMPORT_SMD_KEYFRAME, value);
+        self.set_int_property(
+            str::from_utf8(AI_CONFIG_IMPORT_SMD_KEYFRAME).unwrap(),
+            value,
+        );
     }
 
     /// Override [`global_keyframe`](#method.global_keyframe) property for the Unreal importer.
     pub fn unreal_keyframe(&mut self, value: i32) {
-        self.set_int_property(IMPORT_UNREAL_KEYFRAME, value);
+        self.set_int_property(
+            str::from_utf8(AI_CONFIG_IMPORT_UNREAL_KEYFRAME).unwrap(),
+            value,
+        );
     }
 
     /// Configures the AC importer to collect all surfaces which have the "Backface cull" flag set
@@ -872,7 +990,10 @@ impl Importer {
     ///
     /// Default: true.
     pub fn ac_separate_bf_cull(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_AC_SEPARATE_BFCULL, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_AC_SEPARATE_BFCULL).unwrap(),
+            enable,
+        );
     }
 
     /// Configures whether the AC importer evaluates subdivision surfaces (indicated by the presence
@@ -881,7 +1002,10 @@ impl Importer {
     ///
     /// Default: true.
     pub fn ac_eval_subdivision(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_AC_EVAL_SUBDIVISION, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_AC_EVAL_SUBDIVISION).unwrap(),
+            enable,
+        );
     }
 
     /// Configures the Unreal importer to separate faces with different surface flags (e.g.
@@ -889,7 +1013,10 @@ impl Importer {
     ///
     /// Default: true.
     pub fn unreal_handle_flags(&mut self, enable: bool) {
-        self.set_bool_property(UNREAL_HANDLE_FLAGS, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_UNREAL_HANDLE_FLAGS).unwrap(),
+            enable,
+        );
     }
 
     /// Configures the terragen importer to compute UVs for terrains, if not given.
@@ -897,7 +1024,10 @@ impl Importer {
     ///
     /// Default: false.
     pub fn ter_make_uvs(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_TER_MAKE_UVS, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_TER_MAKE_UVS).unwrap(),
+            enable,
+        );
     }
 
     /// Configures the ASE importer to always reconstruct normal vectors based on the smoothing
@@ -905,7 +1035,10 @@ impl Importer {
     ///
     /// Default: true.
     pub fn ase_reconstruct_normals(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_ASE_RECONSTRUCT_NORMALS, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_ASE_RECONSTRUCT_NORMALS).unwrap(),
+            enable,
+        );
     }
 
     /// Configures the MD3 importer to detect and process multi-part Quake player models.
@@ -916,7 +1049,10 @@ impl Importer {
     ///
     /// Default: true.
     pub fn md3_handle_multipart(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_MD3_HANDLE_MULTIPART, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_MD3_HANDLE_MULTIPART).unwrap(),
+            enable,
+        );
     }
 
     /// Tells the MD3 importer which skin files to load.
@@ -927,7 +1063,10 @@ impl Importer {
     ///
     /// Default: "default".
     pub fn md3_skin_name(&mut self, name: &str) {
-        self.set_string_property(IMPORT_MD3_SKIN_NAME, name);
+        self.set_string_property(
+            str::from_utf8(AI_CONFIG_IMPORT_MD3_SKIN_NAME).unwrap(),
+            name,
+        );
     }
 
     /// Specify the Quake 3 shader file to be used for a particular MD3 file. This can also be a
@@ -942,7 +1081,10 @@ impl Importer {
     /// `<dir>/<model_name>.shader` first, `<dir>/<file_name>.shader` is the fallback file.
     /// Note that `<dir>` should have a terminal (back)slash.
     pub fn md3_shader_src(&mut self, path: &str) {
-        self.set_string_property(IMPORT_MD3_SHADER_SRC, path);
+        self.set_string_property(
+            str::from_utf8(AI_CONFIG_IMPORT_MD3_SHADER_SRC).unwrap(),
+            path,
+        );
     }
 
     /// Configures the LWO importer to load just one layer from the model.
@@ -954,7 +1096,10 @@ impl Importer {
     ///
     /// Default: all layers are loaded.
     pub fn lwo_one_layer_only_str(&mut self, name: &str) {
-        self.set_string_property(IMPORT_LWO_ONE_LAYER_ONLY, name);
+        self.set_string_property(
+            str::from_utf8(AI_CONFIG_IMPORT_LWO_ONE_LAYER_ONLY).unwrap(),
+            name,
+        );
     }
 
     /// Configures the LWO importer to load just one layer from the model.
@@ -966,7 +1111,10 @@ impl Importer {
     ///
     /// Default: all layers are loaded.
     pub fn lwo_one_layer_only_int(&mut self, index: i32) {
-        self.set_int_property(IMPORT_LWO_ONE_LAYER_ONLY, index);
+        self.set_int_property(
+            str::from_utf8(AI_CONFIG_IMPORT_LWO_ONE_LAYER_ONLY).unwrap(),
+            index,
+        );
     }
 
     /// Configures the MD5 loader to not load the MD5ANIM file for a MD5MESH file automatically.
@@ -977,7 +1125,10 @@ impl Importer {
     ///
     /// Default: false.
     pub fn md5_no_anim_autoload(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_MD5_NO_ANIM_AUTOLOAD, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_MD5_NO_ANIM_AUTOLOAD).unwrap(),
+            enable,
+        );
     }
 
     /// Defines the begin of the time range for which the LWS loader evaluates animations and
@@ -992,7 +1143,10 @@ impl Importer {
     ///
     /// Default: taken from file.
     pub fn lws_anim_start(&mut self, frame: i32) {
-        self.set_int_property(IMPORT_LWS_ANIM_START, frame);
+        self.set_int_property(
+            str::from_utf8(AI_CONFIG_IMPORT_LWS_ANIM_START).unwrap(),
+            frame,
+        );
     }
 
     /// Defines the end of the time range for which the LWS loader evaluates animations and
@@ -1000,7 +1154,10 @@ impl Importer {
     ///
     /// Default: taken from file.
     pub fn lws_anim_end(&mut self, frame: i32) {
-        self.set_int_property(IMPORT_LWS_ANIM_END, frame);
+        self.set_int_property(
+            str::from_utf8(AI_CONFIG_IMPORT_LWS_ANIM_END).unwrap(),
+            frame,
+        );
     }
 
     /// Defines the output frame rate of the IRR loader.
@@ -1010,7 +1167,7 @@ impl Importer {
     ///
     /// Default: 100.
     pub fn irr_anim_fps(&mut self, fps: i32) {
-        self.set_int_property(IMPORT_IRR_ANIM_FPS, fps);
+        self.set_int_property(str::from_utf8(AI_CONFIG_IMPORT_IRR_ANIM_FPS).unwrap(), fps);
     }
 
     /// Ogre Importer will try to find referenced materials from this file.
@@ -1024,7 +1181,10 @@ impl Importer {
     ///
     /// Default value: Scene.material.
     pub fn ogre_material_file(&mut self, file: &str) {
-        self.set_string_property(IMPORT_OGRE_MATERIAL_FILE, file);
+        self.set_string_property(
+            str::from_utf8(AI_CONFIG_IMPORT_OGRE_MATERIAL_FILE).unwrap(),
+            file,
+        );
     }
 
     /// Ogre Importer detect the texture usage from its filename.
@@ -1045,7 +1205,10 @@ impl Importer {
     ///
     /// Default: false.
     pub fn ogre_texture_type_from_filename(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_OGRE_TEXTURETYPE_FROM_FILENAME, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_OGRE_TEXTURETYPE_FROM_FILENAME).unwrap(),
+            enable,
+        );
     }
 
     /// Specifies whether the IFC loader skips over IfcSpace elements.
@@ -1055,18 +1218,10 @@ impl Importer {
     ///
     /// Default: true.
     pub fn ifc_skip_space_representations(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_IFC_SKIP_SPACE_REPRESENTATIONS, enable);
-    }
-
-    /// Specifies whether the IFC loader skips over shape representations of type 'Curve2D'.
-    ///
-    /// A lot of files contain both a faceted mesh representation and a outline with a presentation
-    /// type of 'Curve2D'. Currently Assimp doesn't convert those, so turning this option off just
-    // clutters the log with errors.
-    ///
-    /// Default: true.
-    pub fn ifc_skip_curve_representations(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_IFC_SKIP_CURVE_REPRESENTATIONS, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_IFC_SKIP_SPACE_REPRESENTATIONS).unwrap(),
+            enable,
+        );
     }
 
     /// Specifies whether the IFC loader will use its own, custom triangulation algorithm to
@@ -1081,14 +1236,20 @@ impl Importer {
     ///
     /// Default: true.
     pub fn ifc_custom_triangulation(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_IFC_CUSTOM_TRIANGULATION, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_IFC_CUSTOM_TRIANGULATION).unwrap(),
+            enable,
+        );
     }
 
     /// Tells the Collada importer to ignore the up direction specified in the file.
     ///
     /// Default: false.
     pub fn collada_ignore_up_direction(&mut self, enable: bool) {
-        self.set_bool_property(IMPORT_COLLADA_IGNORE_UP_DIRECTION, enable);
+        self.set_bool_property(
+            str::from_utf8(AI_CONFIG_IMPORT_COLLADA_IGNORE_UP_DIRECTION).unwrap(),
+            enable,
+        );
     }
 
     /// Get a list of all file extensions supported by Assimp.
@@ -1100,10 +1261,18 @@ impl Importer {
     /// `Vec<String>` containing the supported file extensions in lower-case with no leading
     /// wildcard or period characters, e.g. "3ds", "obj", "fbx".
     pub fn get_extension_list() -> Vec<String> {
-        let mut ext_list = AiString::default();
+        let mut ext_list = aiString {
+            length: 0,
+            data: [0; 1024],
+        };
         unsafe { aiGetExtensionList(&mut ext_list) };
 
-        let extensions = ext_list.as_ref().split(';');
+        let extensions = unsafe {
+            crate::aistring_to_cstr(&ext_list)
+                .to_str()
+                .unwrap()
+                .split(';')
+        };
         extensions
             .map(|x| x.trim_start_matches("*.").to_owned())
             .collect()

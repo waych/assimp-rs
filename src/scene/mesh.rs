@@ -1,28 +1,28 @@
-use ffi::{AiBone, AiColor4D, AiMesh, AiVector3D, AiVertexWeight};
+use ffi::{aiBone, aiColor4D, aiMesh, aiVector3D, aiVertexWeight};
 
 use super::face::{Face, FaceIter};
-use math::color4::{Color4D, Color4DIter};
-use math::vector3::{Vector3D, Vector3DIter};
+use crate::math::color4::{Color4D, Color4DIter};
+use crate::math::vector3::{Vector3D, Vector3DIter};
 
-use math::Matrix4x4;
+use crate::math::Matrix4x4;
 
 define_type_and_iterator_indirect! {
     /// Mesh type (incomplete)
-    struct Mesh(&AiMesh)
+    struct Mesh(&aiMesh)
     /// Mesh iterator type.
     struct MeshIter
 }
 
 define_type_and_iterator_indirect! {
     /// Bone type
-    struct Bone(&AiBone)
+    struct Bone(&aiBone)
     /// Bone iterator type.
     struct BoneIter
 }
 
 define_type_and_iterator_indirect! {
     /// Vertex weight type
-    struct VertexWeight(&AiVertexWeight)
+    struct VertexWeight(&aiVertexWeight)
     /// Vertex weight iterator type.
     struct VertexWeightIter
 }
@@ -30,96 +30,96 @@ define_type_and_iterator_indirect! {
 impl Mesh {
     // TODO return as PrimitiveType enum
     pub fn primitive_types(&self) -> u32 {
-        self.primitive_types
+        self.mPrimitiveTypes
     }
 
     pub fn num_vertices(&self) -> u32 {
-        self.num_vertices
+        self.mNumVertices
     }
 
     pub fn vertex_iter(&self) -> Vector3DIter {
-        Vector3DIter::new(self.vertices, self.num_vertices as usize)
+        Vector3DIter::new(self.mVertices, self.mNumVertices as usize)
     }
 
     pub fn get_vertex(&self, id: u32) -> Option<Vector3D> {
-        self.vertex_data(self.vertices, id)
+        self.vertex_data(self.mVertices, id)
     }
 
     pub fn normal_iter(&self) -> Vector3DIter {
-        Vector3DIter::new(self.normals, self.num_vertices as usize)
+        Vector3DIter::new(self.mNormals, self.mNumVertices as usize)
     }
 
     pub fn get_normal(&self, id: u32) -> Option<Vector3D> {
-        self.vertex_data(self.normals, id)
+        self.vertex_data(self.mNormals, id)
     }
 
     pub fn tangent_iter(&self) -> Vector3DIter {
-        Vector3DIter::new(self.tangents, self.num_vertices as usize)
+        Vector3DIter::new(self.mTangents, self.mNumVertices as usize)
     }
 
     pub fn get_tangent(&self, id: u32) -> Option<Vector3D> {
-        self.vertex_data(self.tangents, id)
+        self.vertex_data(self.mTangents, id)
     }
 
     pub fn bitangent_iter(&self) -> Vector3DIter {
-        Vector3DIter::new(self.bitangents, self.num_vertices as usize)
+        Vector3DIter::new(self.mBitangents, self.mNumVertices as usize)
     }
 
     pub fn get_bitangent(&self, id: u32) -> Option<Vector3D> {
-        self.vertex_data(self.bitangents, id)
+        self.vertex_data(self.mBitangents, id)
     }
 
     pub fn vertex_color_iter(&self, set_id: usize) -> Color4DIter {
-        Color4DIter::new(self.colors[set_id], self.num_vertices as usize)
+        Color4DIter::new(self.mColors[set_id], self.mNumVertices as usize)
     }
 
     pub fn get_vertex_color(&self, set_id: usize, id: u32) -> Option<Color4D> {
-        self.color_data(self.colors[set_id], id)
+        self.color_data(self.mColors[set_id], id)
     }
 
     pub fn texture_coords_iter(&self, channel_id: usize) -> Vector3DIter {
-        Vector3DIter::new(self.texture_coords[channel_id], self.num_vertices as usize)
+        Vector3DIter::new(self.mTextureCoords[channel_id], self.mNumVertices as usize)
     }
 
     pub fn get_texture_coord(&self, channel_id: usize, id: u32) -> Option<Vector3D> {
-        self.vertex_data(self.texture_coords[channel_id], id)
+        self.vertex_data(self.mTextureCoords[channel_id], id)
     }
 
     pub fn num_faces(&self) -> u32 {
-        self.num_faces
+        self.mNumFaces
     }
 
     pub fn face_iter(&self) -> FaceIter {
-        FaceIter::new(self.faces, self.num_faces as usize)
+        FaceIter::new(self.mFaces, self.mNumFaces as usize)
     }
 
     pub fn get_face(&self, id: u32) -> Option<&Face> {
-        if id < self.num_faces {
-            unsafe { Some(Face::from_raw(self.faces.offset(id as isize))) }
+        if id < self.mNumFaces {
+            unsafe { Some(Face::from_raw(self.mFaces.offset(id as isize))) }
         } else {
             None
         }
     }
 
     pub fn num_bones(&self) -> u32 {
-        self.num_bones
+        self.mNumBones
     }
 
     pub fn bone_iter(&self) -> BoneIter {
-        BoneIter::new(self.bones as *const *const AiBone, self.num_bones as usize)
+        BoneIter::new(self.mBones as *const *const aiBone, self.mNumBones as usize)
     }
 
     pub fn get_bone(&self, id: u32) -> Option<&Bone> {
-        if id < self.num_bones {
-            unsafe { Some(Bone::from_raw(*(self.bones.offset(id as isize)))) }
+        if id < self.mNumBones {
+            unsafe { Some(Bone::from_raw(*(self.mBones.offset(id as isize)))) }
         } else {
             None
         }
     }
 
     #[inline]
-    fn vertex_data(&self, array: *mut AiVector3D, id: u32) -> Option<Vector3D> {
-        if id < self.num_vertices {
+    fn vertex_data(&self, array: *mut aiVector3D, id: u32) -> Option<Vector3D> {
+        if id < self.mNumVertices {
             unsafe { Some(Vector3D::from_raw(*array.offset(id as isize))) }
         } else {
             None
@@ -127,8 +127,8 @@ impl Mesh {
     }
 
     #[inline]
-    fn color_data(&self, array: *mut AiColor4D, id: u32) -> Option<Color4D> {
-        if id < self.num_vertices {
+    fn color_data(&self, array: *mut aiColor4D, id: u32) -> Option<Color4D> {
+        if id < self.mNumVertices {
             unsafe { Some(Color4D::from_raw(*array.offset(id as isize))) }
         } else {
             None
@@ -139,31 +139,33 @@ impl Mesh {
 impl Bone {
     /// Returns the name of the bone.
     pub fn name(&self) -> &str {
-        self.name.as_ref()
+        unsafe { crate::aistring_to_cstr(&self.mName) }
+            .to_str()
+            .unwrap()
     }
 
     /// Returns the bones's offset transformation matrix.
     pub fn offset_matrix(&self) -> Matrix4x4 {
-        Matrix4x4::from_raw(self.offset_matrix)
+        Matrix4x4::from_raw(self.mOffsetMatrix)
     }
 
     /// Get the number of vertex weights
     pub fn num_weights(&self) -> u32 {
-        self.num_weights
+        self.mNumWeights
     }
 
     /// Get an iterator over the vertex weights for this bone
     pub fn weight_iter(&self) -> VertexWeightIter {
         VertexWeightIter::new(
-            self.weights as *const *const AiVertexWeight,
-            self.num_weights as usize,
+            self.mWeights as *const *const aiVertexWeight,
+            self.mNumWeights as usize,
         )
     }
 
     /// Get the nth vertex weight
     pub fn get_weight(&self, id: u32) -> Option<&VertexWeight> {
-        if id < self.num_weights {
-            unsafe { Some(VertexWeight::from_raw(self.weights.offset(id as isize))) }
+        if id < self.mNumWeights {
+            unsafe { Some(VertexWeight::from_raw(self.mWeights.offset(id as isize))) }
         } else {
             None
         }

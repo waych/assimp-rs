@@ -1,16 +1,16 @@
 #[cfg(feature = "cgmath")]
 use cgmath::Vector3;
-use ffi::AiColor3D;
+use ffi::aiColor3D;
 
 define_type! {
     /// Color3D docs
     #[derive(Clone, Copy, Debug, PartialEq)]
-    struct Color3D(AiColor3D)
+    struct Color3D(aiColor3D)
 }
 
 impl Color3D {
     pub fn new(r: f32, g: f32, b: f32) -> Color3D {
-        Color3D(AiColor3D { r: r, g: g, b: b })
+        Color3D(aiColor3D { r: r, g: g, b: b })
     }
 }
 

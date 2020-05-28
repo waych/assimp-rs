@@ -1,16 +1,16 @@
 #[cfg(feature = "cgmath")]
 use cgmath::{Point2, Vector2};
-use ffi::AiVector2D;
+use ffi::aiVector2D;
 
 define_type! {
     /// Vector2D docs
     #[derive(Clone, Copy, Debug, PartialEq)]
-    struct Vector2D(AiVector2D)
+    struct Vector2D(aiVector2D)
 }
 
 impl Vector2D {
     pub fn new(x: f32, y: f32) -> Vector2D {
-        Vector2D(AiVector2D { x: x, y: y })
+        Vector2D(aiVector2D { x: x, y: y })
     }
 }
 

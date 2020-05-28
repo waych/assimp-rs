@@ -22,3 +22,26 @@ pub mod import;
 pub mod log;
 pub mod math;
 pub mod scene;
+
+unsafe fn aistring_to_cstr(aistring: &ffi::aiString) -> &std::ffi::CStr {
+    std::ffi::CStr::from_bytes_with_nul_unchecked(std::mem::transmute(
+        &aistring.data[..aistring.length as usize],
+    ))
+}
+
+fn str_to_aistring(val: &str) -> ffi::aiString {
+    let bytes = val.as_bytes();
+
+    assert!(bytes.len() < 1024);
+
+    let mut data = [0u8; 1024];
+
+    data.copy_from_slice(bytes);
+
+    let data = unsafe { std::mem::transmute(data) };
+
+    ffi::aiString {
+        length: bytes.len() as _,
+        data,
+    }
+}

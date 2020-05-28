@@ -1,8 +1,8 @@
 //! Argument structs for `Importer` post-processing configuration.
 
-use ffi::config::*;
+use ffi::*;
 
-use math::Matrix4x4;
+use crate::math::Matrix4x4;
 
 /// Enumerates components of the Scene and Mesh data structures that can be excluded from the import
 /// using the `remove_component` step.
@@ -96,9 +96,9 @@ struct_with_defaults! {
     /// Arguments for `split_large_meshes` post-process step.
     struct SplitLargeMeshes {
         /// Maximum number of vertices per mesh. Default: 1000000
-        pub vertex_limit: i32 = AI_SLM_DEFAULT_MAX_VERTICES,
+        pub vertex_limit: u32 = AI_SLM_DEFAULT_MAX_VERTICES,
         /// Maximum number of triangles per mesh. Default: 1000000
-        pub triangle_limit: i32 = AI_SLM_DEFAULT_MAX_TRIANGLES
+        pub triangle_limit: u32 = AI_SLM_DEFAULT_MAX_TRIANGLES
     }
 }
 
@@ -124,7 +124,7 @@ struct_with_defaults! {
     /// Arguments for `limit_bone_weights` post-process step.
     struct LimitBoneWeights {
         /// Maximum number of bones that affect a single vertex. Default: 4
-        pub max_weights: i32 = AI_LMW_MAX_WEIGHTS
+        pub max_weights: u32 = AI_LMW_MAX_WEIGHTS
     }
 }
 
@@ -132,7 +132,7 @@ struct_with_defaults! {
     /// Arguments for `improve_cache_locality` post-process step.
     struct ImproveCacheLocality {
         /// Set the size of the post-transform vertex cache. Default: 12
-        pub cache_size: i32 = PP_ICL_DEFAULT_PTCACHE_SIZE
+        pub cache_size: u32 = PP_ICL_PTCACHE_SIZE
     }
 }
 
@@ -190,7 +190,7 @@ struct_with_defaults! {
     /// Arguments for `split_by_bone_count` post-process step.
     struct SplitByBoneCount {
         /// Maximum number of bones per mesh. Default: 60
-        pub max_bones: i32 = AI_SBBC_DEFAULT_MAX_BONES
+        pub max_bones: u32 = AI_SBBC_DEFAULT_MAX_BONES
     }
 }
 
@@ -198,7 +198,7 @@ struct_with_defaults! {
     /// Arguments for `debone` post-process step.
     struct Debone {
         /// Threshold for considering bone necessary. Default: 1.0
-        pub threshold: f32 = AI_DEBONE_THRESHOLD,
+        pub threshold: f64 = AI_DEBONE_THRESHOLD,
         /// Whether to require all bones to meet the threshold before removing any. Default: false
         pub all_or_none: bool = false
     }

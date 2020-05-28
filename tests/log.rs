@@ -5,7 +5,7 @@ use assimp::LogStream;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-unsafe extern "system" fn log_callback(msg: *const c_char, _userdata: *mut c_char) {
+unsafe extern "C" fn log_callback(msg: *const c_char, _userdata: *mut c_char) {
     let msg = CStr::from_ptr(msg);
     println!("Got log message {}", msg.to_str().unwrap());
 }

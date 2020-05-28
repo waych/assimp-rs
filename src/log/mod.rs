@@ -5,14 +5,16 @@ use ffi::*;
 use std::os::raw::{c_char, c_void};
 
 pub struct LogStream {
-    raw: AiLogStream,
+    raw: aiLogStream,
     attached: bool,
 }
 
 impl LogStream {
     pub fn file(filename: &str) -> Option<LogStream> {
         let cstr = CString::new(filename).unwrap();
-        let stream = unsafe { aiGetPredefinedLogStream(AiDefaultLogStream::File, cstr.as_ptr()) };
+        let stream = unsafe {
+            aiGetPredefinedLogStream(aiDefaultLogStream_aiDefaultLogStream_FILE, cstr.as_ptr())
+        };
         if stream.callback.is_some() {
             Some(LogStream {
                 raw: stream,
@@ -24,7 +26,9 @@ impl LogStream {
     }
 
     pub fn stdout() -> LogStream {
-        let stream = unsafe { aiGetPredefinedLogStream(AiDefaultLogStream::StdOut, ptr::null()) };
+        let stream = unsafe {
+            aiGetPredefinedLogStream(aiDefaultLogStream_aiDefaultLogStream_STDOUT, ptr::null())
+        };
         LogStream {
             raw: stream,
             attached: false,
@@ -32,7 +36,9 @@ impl LogStream {
     }
 
     pub fn stderr() -> LogStream {
-        let stream = unsafe { aiGetPredefinedLogStream(AiDefaultLogStream::StdErr, ptr::null()) };
+        let stream = unsafe {
+            aiGetPredefinedLogStream(aiDefaultLogStream_aiDefaultLogStream_STDERR, ptr::null())
+        };
         LogStream {
             raw: stream,
             attached: false,
@@ -41,18 +47,20 @@ impl LogStream {
 
     #[cfg(windows)]
     pub fn debug() -> LogStream {
-        let stream = unsafe { aiGetPredefinedLogStream(AiDefaultLogStream::Debugger, ptr::null()) };
+        let stream = unsafe {
+            aiGetPredefinedLogStream(aiDefaultLogStream_aiDefaultLogStream_DEBUGGER, ptr::null())
+        };
         LogStream {
             raw: stream,
             attached: false,
         }
     }
 
-    pub fn callback(cb: unsafe extern "system" fn(*const c_char, *mut c_char)) -> LogStream {
+    pub fn callback(cb: unsafe extern "C" fn(*const c_char, *mut c_char)) -> LogStream {
         LogStream {
-            raw: AiLogStream {
+            raw: aiLogStream {
                 callback: Some(cb),
-                user: ptr::null::<c_void>() as *mut c_void,
+                user: ptr::null::<c_void>() as *mut i8,
             },
             attached: false,
         }
@@ -77,7 +85,7 @@ impl LogStream {
     }
 
     pub fn set_verbose_logging(state: bool) {
-        unsafe { aiEnableVerboseLogging(if state { AI_TRUE } else { AI_FALSE }) }
+        unsafe { aiEnableVerboseLogging(if state { AI_TRUE } else { AI_FALSE } as i32) }
     }
 }
 

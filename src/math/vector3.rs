@@ -1,18 +1,18 @@
 #[cfg(feature = "cgmath")]
 use cgmath::{Point3, Vector3};
-use ffi::AiVector3D;
+use ffi::aiVector3D;
 
 define_type_and_iterator! {
     /// Vector3D docs
     #[derive(Clone, Copy, Debug, PartialEq)]
-    struct Vector3D(AiVector3D)
+    struct Vector3D(aiVector3D)
     /// Vector3DIter docs
     struct Vector3DIter
 }
 
 impl Vector3D {
     pub fn new(x: f32, y: f32, z: f32) -> Vector3D {
-        Vector3D(AiVector3D { x: x, y: y, z: z })
+        Vector3D(aiVector3D { x: x, y: y, z: z })
     }
 }
 

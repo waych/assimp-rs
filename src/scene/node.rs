@@ -1,12 +1,12 @@
 use std::{ffi::CStr, slice::from_raw_parts};
 
-use ffi::{AiMetadata, AiMetadataEntry, AiNode, AiString, AiVector3D};
+use ffi::{aiMetadata, aiMetadataEntry, aiNode, aiString, aiVector3D};
 
-use math::{Matrix4x4, Vector3D};
+use crate::math::{Matrix4x4, Vector3D};
 
 define_type_and_iterator_indirect! {
     /// The `Node` type represents a node in the imported scene hierarchy.
-    struct Node(&AiNode)
+    struct Node(&aiNode)
     /// Node iterator type.
     struct NodeIter
 }
@@ -14,18 +14,20 @@ define_type_and_iterator_indirect! {
 impl Node {
     /// Returns the name of the node.
     pub fn name(&self) -> &str {
-        self.name.as_ref()
+        unsafe { crate::aistring_to_cstr(&self.mName) }
+            .to_str()
+            .unwrap()
     }
 
     /// Returns the node's transformation matrix.
     pub fn transformation(&self) -> Matrix4x4 {
-        Matrix4x4::from_raw(self.transformation)
+        Matrix4x4::from_raw(self.mTransformation)
     }
 
     /// Return the parent of this node. Returns `None` if this node is the root node.
     pub fn parent(&self) -> Option<&Node> {
-        if !self.parent.is_null() {
-            unsafe { Some(Node::from_raw(self.parent)) }
+        if !self.mParent.is_null() {
+            unsafe { Some(Node::from_raw(self.mParent)) }
         } else {
             None
         }
@@ -33,43 +35,43 @@ impl Node {
 
     /// Returns the number of child nodes.
     pub fn num_children(&self) -> u32 {
-        self.num_children
+        self.mNumChildren
     }
 
     /// Returns a vector containing all of the child nodes under this node.
     pub fn child_iter(&self) -> NodeIter {
         NodeIter::new(
-            self.children as *const *const AiNode,
-            self.num_children as usize,
+            self.mChildren as *const *const aiNode,
+            self.mNumChildren as usize,
         )
     }
 
     /// Returns the number of meshes under this node.
     pub fn num_meshes(&self) -> u32 {
-        self.num_meshes
+        self.mNumMeshes
     }
 
     /// Returns a vector containing all of the meshes under this node. These are indices into
     /// the meshes contained in the `Scene` struct.
     pub fn meshes(&self) -> &[u32] {
-        let len = self.num_meshes as usize;
-        unsafe { from_raw_parts(self.meshes, len) }
+        let len = self.mNumMeshes as usize;
+        unsafe { from_raw_parts(self.mMeshes, len) }
     }
 
     pub fn metadata(&self) -> Metadata<'_> {
-        unsafe { Metadata::from_raw(self.metadata) }
+        unsafe { Metadata::from_raw(self.mMetaData) }
     }
 }
 
 /// Metadata for a specific node. If you want this as a `HashMap`, you can easily just
 /// do `let map: HashMap<_, _> = node.metadata().collect()`.
 pub struct Metadata<'a> {
-    meta: &'a AiMetadata,
+    meta: &'a aiMetadata,
     index: usize,
 }
 
 impl std::ops::Deref for Metadata<'_> {
-    type Target = AiMetadata;
+    type Target = aiMetadata;
 
     fn deref(&self) -> &Self::Target {
         self.meta
@@ -78,7 +80,7 @@ impl std::ops::Deref for Metadata<'_> {
 
 impl Metadata<'_> {
     /// Create a metadata iterator from a raw pointer.
-    pub unsafe fn from_raw(meta: *const AiMetadata) -> Self {
+    pub unsafe fn from_raw(meta: *const aiMetadata) -> Self {
         Metadata {
             meta: &*meta,
             index: 0,
@@ -86,13 +88,9 @@ impl Metadata<'_> {
     }
 }
 
-unsafe fn aistring_to_cstr(aistring: &AiString) -> &CStr {
-    CStr::from_bytes_with_nul_unchecked(&aistring.data[..aistring.length])
-}
-
 impl ExactSizeIterator for Metadata<'_> {
     fn len(&self) -> usize {
-        self.num_properties as usize - self.index
+        self.mNumProperties as usize - self.index
     }
 }
 
@@ -101,9 +99,10 @@ impl<'a> Iterator for Metadata<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.len() > 0 {
-            let key = unsafe { aistring_to_cstr(&*self.meta.keys.offset(self.index as isize)) };
+            let key =
+                unsafe { crate::aistring_to_cstr(&*self.meta.mKeys.offset(self.index as isize)) };
             let value =
-                unsafe { MetadataEntry::from_raw(self.meta.values.offset(self.index as isize)) };
+                unsafe { MetadataEntry::from_raw(self.meta.mValues.offset(self.index as isize)) };
 
             self.index += 1;
 
@@ -116,7 +115,7 @@ impl<'a> Iterator for Metadata<'a> {
 
 define_type! {
     /// A single metadata entry value
-    struct MetadataEntry(&AiMetadataEntry)
+    struct MetadataEntry(&aiMetadataEntry)
 }
 
 /// The value of a metadata item.
@@ -140,21 +139,20 @@ pub enum Value<'a> {
 impl MetadataEntry {
     /// Get the value of this entry
     pub fn get(&self) -> Value<'_> {
-        use ffi::AiMetadataType;
-
         unsafe {
-            match self.data_type {
-                AiMetadataType::Bool => Value::Bool(*(self.data as *const bool)),
-                AiMetadataType::Int32 => Value::I32(*(self.data as *const i32)),
-                AiMetadataType::Uint64 => Value::U64(*(self.data as *const u64)),
-                AiMetadataType::Float => Value::F32(*(self.data as *const f32)),
-                AiMetadataType::Double => Value::F64(*(self.data as *const f64)),
-                AiMetadataType::AiString => {
-                    Value::Str(aistring_to_cstr(&*(self.data as *const AiString)))
+            match self.mType {
+                ffi::aiMetadataType_AI_BOOL => Value::Bool(*(self.mData as *const bool)),
+                ffi::aiMetadataType_AI_INT32 => Value::I32(*(self.mData as *const i32)),
+                ffi::aiMetadataType_AI_UINT64 => Value::U64(*(self.mData as *const u64)),
+                ffi::aiMetadataType_AI_FLOAT => Value::F32(*(self.mData as *const f32)),
+                ffi::aiMetadataType_AI_DOUBLE => Value::F64(*(self.mData as *const f64)),
+                ffi::aiMetadataType_AI_AISTRING => {
+                    Value::Str(crate::aistring_to_cstr(&*(self.mData as *const aiString)))
                 }
-                AiMetadataType::AiVector3D => {
-                    Value::Vector3D(Vector3D::from_raw(*(self.data as *const AiVector3D)))
+                ffi::aiMetadataType_AI_AIVECTOR3D => {
+                    Value::Vector3D(Vector3D::from_raw(*(self.mData as *const aiVector3D)))
                 }
+                _ => unreachable!(),
             }
         }
     }

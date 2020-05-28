@@ -1,16 +1,16 @@
 #[cfg(feature = "cgmath")]
 use cgmath::Quaternion as CgQuaternion;
-use ffi::AiQuaternion;
+use ffi::aiQuaternion;
 
 define_type! {
     /// Quaternion docs
     #[derive(Clone, Copy, Debug, PartialEq)]
-    struct Quaternion(AiQuaternion)
+    struct Quaternion(aiQuaternion)
 }
 
 impl Quaternion {
     pub fn new(w: f32, x: f32, y: f32, z: f32) -> Quaternion {
-        Quaternion(AiQuaternion {
+        Quaternion(aiQuaternion {
             w: w,
             x: x,
             y: y,

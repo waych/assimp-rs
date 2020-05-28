@@ -1,11 +1,11 @@
 #[cfg(feature = "cgmath")]
 use cgmath::Matrix4;
-use ffi::AiMatrix4x4;
+use ffi::aiMatrix4x4;
 
 define_type! {
     /// Matrix4x4 docs
     #[derive(Clone, Copy, Debug, PartialEq)]
-    struct Matrix4x4(AiMatrix4x4)
+    struct Matrix4x4(aiMatrix4x4)
 }
 
 impl Matrix4x4 {
@@ -27,7 +27,7 @@ impl Matrix4x4 {
         c3r2: f32,
         c3r3: f32,
     ) -> Matrix4x4 {
-        Matrix4x4(AiMatrix4x4 {
+        Matrix4x4(aiMatrix4x4 {
             a1: c0r0,
             a2: c0r1,
             a3: c0r2,

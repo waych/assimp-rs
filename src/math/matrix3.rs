@@ -1,11 +1,11 @@
 #[cfg(feature = "cgmath")]
 use cgmath::Matrix3;
-use ffi::AiMatrix3x3;
+use ffi::aiMatrix3x3;
 
 define_type! {
     /// Matrix3x3 docs
     #[derive(Clone, Copy, Debug, PartialEq)]
-    struct Matrix3x3(AiMatrix3x3)
+    struct Matrix3x3(aiMatrix3x3)
 }
 
 impl Matrix3x3 {
@@ -20,7 +20,7 @@ impl Matrix3x3 {
         c2r1: f32,
         c2r2: f32,
     ) -> Matrix3x3 {
-        Matrix3x3(AiMatrix3x3 {
+        Matrix3x3(aiMatrix3x3 {
             a1: c0r0,
             a2: c0r1,
             a3: c0r2,

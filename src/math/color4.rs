@@ -1,18 +1,18 @@
 #[cfg(feature = "cgmath")]
 use cgmath::Vector4;
-use ffi::AiColor4D;
+use ffi::aiColor4D;
 
 define_type_and_iterator! {
     /// Color4D docs
     #[derive(Clone, Copy, Debug, PartialEq)]
-    struct Color4D(AiColor4D)
+    struct Color4D(aiColor4D)
     /// Color4DIter docs
     struct Color4DIter
 }
 
 impl Color4D {
     pub fn new(r: f32, g: f32, b: f32, a: f32) -> Color4D {
-        Color4D(AiColor4D {
+        Color4D(aiColor4D {
             r: r,
             g: g,
             b: b,
