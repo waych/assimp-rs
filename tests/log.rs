@@ -1,4 +1,4 @@
-extern crate rust_assimp as assimp;
+extern crate open_asset_importer as assimp;
 
 use assimp::Importer;
 use assimp::LogStream;

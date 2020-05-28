@@ -1,5 +1,5 @@
 extern crate cgmath;
-extern crate rust_assimp as assimp;
+extern crate open_asset_importer as assimp;
 #[macro_use]
 extern crate glium;
 

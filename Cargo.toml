@@ -1,10 +1,10 @@
 [package]
-name = "rust-assimp"
+name = "open-asset-importer"
 version = "0.1.0"
 authors = ["Lee Jeffery <lee@leejeffery.co.uk>", "Jack Fransham"]
 edition = "2018"
 
-description = "Rust bindings for the Assimp (Open Asset Import) library, for loading 3D assets"
+description = "Rust bindings for the Assimp (Open Asset Importer) library, for loading 3D assets"
 repository = "https://github.com/Vurich/assimp-rs"
 
 license = "MIT"

@@ -1,5 +1,5 @@
 #![cfg(feature = "cgmath")]
-extern crate rust_assimp as assimp;
+extern crate open_asset_importer as assimp;
 extern crate cgmath;
 
 use assimp::math::*;

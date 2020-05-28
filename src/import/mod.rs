@@ -5,7 +5,7 @@
 //!
 //! # Examples
 //! ```
-//! use rust_assimp::import::Importer;
+//! use open_asset_importer::import::Importer;
 //!
 //! fn main() {
 //!     let importer = Importer::new();
