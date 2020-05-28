@@ -68,7 +68,7 @@ impl Importer {
             } else {
                 unsafe {
                     let cstr = CStr::from_ptr(error_str);
-                    match str::from_utf8(cstr.to_bytes()) {
+                    match cstr.to_str() {
                         Ok(s) => Err(s),
                         Err(_) => Err("Unknown error"),
                     }
@@ -102,7 +102,7 @@ impl Importer {
             } else {
                 unsafe {
                     let cstr = CStr::from_ptr(error_str);
-                    match str::from_utf8(cstr.to_bytes()) {
+                    match cstr.to_str() {
                         Ok(s) => Err(s),
                         Err(_) => Err("Unknown error"),
                     }
@@ -142,7 +142,13 @@ impl Importer {
     /// If enabled, measures the time needed for each part of the loading process (i.e. IO time,
     /// importing, postprocessing, ..) and dumps these timings to the output log.
     pub fn measure_time(&mut self, enable: bool) {
-        self.set_bool_property(str::from_utf8(AI_CONFIG_GLOB_MEASURE_TIME).unwrap(), enable);
+        self.set_bool_property(
+            CStr::from_bytes_with_nul(AI_CONFIG_GLOB_MEASURE_TIME)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            enable,
+        );
     }
 
     /// A hint to Assimp to favour speed against import quality.
@@ -150,7 +156,13 @@ impl Importer {
     /// Enabling this option may result in faster loading, but it needn't. It represents just a hint
     /// to loaders and post-processing steps to use faster code paths, if possible.
     pub fn favour_speed(&mut self, enable: bool) {
-        self.set_bool_property(str::from_utf8(AI_CONFIG_FAVOUR_SPEED).unwrap(), enable);
+        self.set_bool_property(
+            CStr::from_bytes_with_nul(AI_CONFIG_FAVOUR_SPEED)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            enable,
+        );
     }
 
     /// Helper method to set or clear the appropriate import flag
@@ -211,11 +223,17 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_CalcTangentSpace, args.enable);
         if args.enable {
             self.set_float_property(
-                str::from_utf8(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.max_smoothing_angle,
             );
             self.set_int_property(
-                str::from_utf8(AI_CONFIG_PP_CT_TEXTURE_CHANNEL_INDEX).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_CT_TEXTURE_CHANNEL_INDEX)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.texture_channel,
             );
         }
@@ -282,7 +300,10 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_RemoveComponent, args.enable);
         if args.enable {
             self.set_int_property(
-                str::from_utf8(AI_CONFIG_PP_RVC_FLAGS).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_RVC_FLAGS)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.components.bits() as i32,
             );
         }
@@ -309,7 +330,10 @@ impl Importer {
             if args.smooth {
                 self.flags |= aiPostProcessSteps_aiProcess_GenSmoothNormals;
                 self.set_float_property(
-                    str::from_utf8(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE).unwrap(),
+                    CStr::from_bytes_with_nul(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE)
+                        .unwrap()
+                        .to_str()
+                        .unwrap(),
                     args.max_smoothing_angle,
                 );
             } else {
@@ -340,11 +364,17 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_SplitLargeMeshes, args.enable);
         if args.enable {
             self.set_int_property(
-                str::from_utf8(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.triangle_limit as _,
             );
             self.set_int_property(
-                str::from_utf8(AI_CONFIG_PP_SLM_VERTEX_LIMIT).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_SLM_VERTEX_LIMIT)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.vertex_limit as _,
             );
         }
@@ -372,19 +402,31 @@ impl Importer {
         );
         if args.enable {
             self.set_bool_property(
-                str::from_utf8(AI_CONFIG_PP_PTV_KEEP_HIERARCHY).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_PTV_KEEP_HIERARCHY)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.keep_hierarchy,
             );
             self.set_bool_property(
-                str::from_utf8(AI_CONFIG_PP_PTV_NORMALIZE).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_PTV_NORMALIZE)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.normalize,
             );
             self.set_bool_property(
-                str::from_utf8(AI_CONFIG_PP_PTV_ADD_ROOT_TRANSFORMATION).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_PTV_ADD_ROOT_TRANSFORMATION)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.add_root_transformation,
             );
             self.set_matrix_property(
-                str::from_utf8(AI_CONFIG_PP_PTV_ROOT_TRANSFORMATION).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_PTV_ROOT_TRANSFORMATION)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.root_transformation,
             );
         }
@@ -406,7 +448,10 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_LimitBoneWeights, args.enable);
         if args.enable {
             self.set_int_property(
-                str::from_utf8(AI_CONFIG_PP_LBW_MAX_WEIGHTS).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_LBW_MAX_WEIGHTS)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.max_weights as _,
             );
         }
@@ -453,7 +498,10 @@ impl Importer {
         );
         if args.enable {
             self.set_int_property(
-                str::from_utf8(AI_CONFIG_PP_ICL_PTCACHE_SIZE).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_ICL_PTCACHE_SIZE)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.cache_size as i32,
             );
         }
@@ -482,7 +530,10 @@ impl Importer {
         );
         if args.enable {
             self.set_string_property(
-                str::from_utf8(AI_CONFIG_PP_RRM_EXCLUDE_LIST).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_RRM_EXCLUDE_LIST)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 &args.exclude_list,
             );
         }
@@ -530,7 +581,10 @@ impl Importer {
             }
 
             self.set_int_property(
-                str::from_utf8(AI_CONFIG_PP_SBP_REMOVE).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_SBP_REMOVE)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.remove.bits() as i32,
             );
         }
@@ -563,7 +617,13 @@ impl Importer {
 
         self.set_import_flag(aiPostProcessSteps_aiProcess_FindDegenerates, args.enable);
         if args.enable {
-            self.set_bool_property(str::from_utf8(AI_CONFIG_PP_FD_REMOVE).unwrap(), args.remove);
+            self.set_bool_property(
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_FD_REMOVE)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+                args.remove,
+            );
         }
     }
 
@@ -583,7 +643,10 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_FindInvalidData, args.enable);
         if args.enable {
             self.set_float_property(
-                str::from_utf8(AI_CONFIG_PP_FID_ANIM_ACCURACY).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_FID_ANIM_ACCURACY)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.accuracy,
             );
         }
@@ -622,7 +685,10 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_TransformUVCoords, args.enable);
         if args.enable {
             self.set_int_property(
-                str::from_utf8(AI_CONFIG_PP_TUV_EVALUATE).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_TUV_EVALUATE)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.flags.bits() as i32,
             );
         }
@@ -677,7 +743,10 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_OptimizeGraph, args.enable);
         if args.enable {
             self.set_string_property(
-                str::from_utf8(AI_CONFIG_PP_OG_EXCLUDE_LIST).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_OG_EXCLUDE_LIST)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 &args.exclude_list,
             );
         }
@@ -726,7 +795,10 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_SplitByBoneCount, args.enable);
         if args.enable {
             self.set_int_property(
-                str::from_utf8(AI_CONFIG_PP_SBBC_MAX_BONES).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_SBBC_MAX_BONES)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.max_bones as _,
             );
         }
@@ -749,11 +821,17 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_Debone, args.enable);
         if args.enable {
             self.set_float_property(
-                str::from_utf8(AI_CONFIG_PP_DB_THRESHOLD).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_DB_THRESHOLD)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.threshold as f32,
             );
             self.set_bool_property(
-                str::from_utf8(AI_CONFIG_PP_DB_ALL_OR_NONE).unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_DB_ALL_OR_NONE)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
                 args.all_or_none,
             );
         }
@@ -765,7 +843,10 @@ impl Importer {
     /// contains no geometry, but only animation data.
     pub fn import_no_skeleton_meshes(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_NO_SKELETON_MESHES).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_NO_SKELETON_MESHES)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -778,7 +859,13 @@ impl Importer {
     ///
     /// Default: colormap.lmp
     pub fn import_mdl_colormap(&mut self, path: &str) {
-        self.set_string_property(str::from_utf8(AI_CONFIG_IMPORT_MDL_COLORMAP).unwrap(), path);
+        self.set_string_property(
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MDL_COLORMAP)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            path,
+        );
     }
 
     /// Set whether the FBX importer will merge all geometry layers present in the source file or
@@ -787,7 +874,10 @@ impl Importer {
     /// Default: true.
     pub fn fbx_read_all_geometry_layers(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_ALL_GEOMETRY_LAYERS).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_READ_ALL_GEOMETRY_LAYERS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -798,7 +888,10 @@ impl Importer {
     /// Default: false.
     pub fn fbx_read_all_materials(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_ALL_MATERIALS).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_READ_ALL_MATERIALS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -808,7 +901,10 @@ impl Importer {
     /// Default: true.
     pub fn fbx_read_materials(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_MATERIALS).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_READ_MATERIALS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -818,7 +914,10 @@ impl Importer {
     /// Default: true.
     pub fn fbx_read_textures(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_TEXTURES).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_READ_TEXTURES)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -828,7 +927,10 @@ impl Importer {
     /// Default: true.
     pub fn fbx_read_cameras(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_CAMERAS).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_READ_CAMERAS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -838,7 +940,10 @@ impl Importer {
     /// Default: true.
     pub fn fbx_read_lights(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_LIGHTS).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_READ_LIGHTS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -848,7 +953,10 @@ impl Importer {
     /// Default: true.
     pub fn fbx_read_animations(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_FBX_READ_ANIMATIONS).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_READ_ANIMATIONS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -860,7 +968,10 @@ impl Importer {
     /// Default: false.
     pub fn fbx_strict_mode(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_FBX_STRICT_MODE).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_STRICT_MODE)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -871,7 +982,10 @@ impl Importer {
     /// Default: true.
     pub fn fbx_preserve_pivots(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -882,7 +996,10 @@ impl Importer {
     /// Default: true.
     pub fn fbx_optimize_empty_animation_curves(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_FBX_OPTIMIZE_EMPTY_ANIMATION_CURVES).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_OPTIMIZE_EMPTY_ANIMATION_CURVES)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -896,7 +1013,10 @@ impl Importer {
     /// Default: first frame.
     pub fn global_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            str::from_utf8(AI_CONFIG_IMPORT_GLOBAL_KEYFRAME).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_GLOBAL_KEYFRAME)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             value,
         );
     }
@@ -904,7 +1024,10 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MD3 importer.
     pub fn md3_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            str::from_utf8(AI_CONFIG_IMPORT_MD3_KEYFRAME).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD3_KEYFRAME)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             value,
         );
     }
@@ -912,7 +1035,10 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MD2 importer.
     pub fn md2_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            str::from_utf8(AI_CONFIG_IMPORT_MD2_KEYFRAME).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD2_KEYFRAME)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             value,
         );
     }
@@ -920,7 +1046,10 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MDL importer.
     pub fn mdl_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            str::from_utf8(AI_CONFIG_IMPORT_MDL_KEYFRAME).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MDL_KEYFRAME)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             value,
         );
     }
@@ -928,7 +1057,10 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MDC importer.
     pub fn mdc_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            str::from_utf8(AI_CONFIG_IMPORT_MDC_KEYFRAME).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MDC_KEYFRAME)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             value,
         );
     }
@@ -936,7 +1068,10 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the SMD importer.
     pub fn smd_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            str::from_utf8(AI_CONFIG_IMPORT_SMD_KEYFRAME).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_SMD_KEYFRAME)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             value,
         );
     }
@@ -944,7 +1079,10 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the Unreal importer.
     pub fn unreal_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            str::from_utf8(AI_CONFIG_IMPORT_UNREAL_KEYFRAME).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_UNREAL_KEYFRAME)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             value,
         );
     }
@@ -955,7 +1093,10 @@ impl Importer {
     /// Default: true.
     pub fn ac_separate_bf_cull(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_AC_SEPARATE_BFCULL).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_AC_SEPARATE_BFCULL)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -967,7 +1108,10 @@ impl Importer {
     /// Default: true.
     pub fn ac_eval_subdivision(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_AC_EVAL_SUBDIVISION).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_AC_EVAL_SUBDIVISION)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -978,7 +1122,10 @@ impl Importer {
     /// Default: true.
     pub fn unreal_handle_flags(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_UNREAL_HANDLE_FLAGS).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_UNREAL_HANDLE_FLAGS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -989,7 +1136,10 @@ impl Importer {
     /// Default: false.
     pub fn ter_make_uvs(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_TER_MAKE_UVS).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_TER_MAKE_UVS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -1000,7 +1150,10 @@ impl Importer {
     /// Default: true.
     pub fn ase_reconstruct_normals(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_ASE_RECONSTRUCT_NORMALS).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_ASE_RECONSTRUCT_NORMALS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -1014,7 +1167,10 @@ impl Importer {
     /// Default: true.
     pub fn md3_handle_multipart(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_MD3_HANDLE_MULTIPART).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD3_HANDLE_MULTIPART)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -1028,7 +1184,10 @@ impl Importer {
     /// Default: "default".
     pub fn md3_skin_name(&mut self, name: &str) {
         self.set_string_property(
-            str::from_utf8(AI_CONFIG_IMPORT_MD3_SKIN_NAME).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD3_SKIN_NAME)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             name,
         );
     }
@@ -1046,7 +1205,10 @@ impl Importer {
     /// Note that `<dir>` should have a terminal (back)slash.
     pub fn md3_shader_src(&mut self, path: &str) {
         self.set_string_property(
-            str::from_utf8(AI_CONFIG_IMPORT_MD3_SHADER_SRC).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD3_SHADER_SRC)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             path,
         );
     }
@@ -1061,7 +1223,10 @@ impl Importer {
     /// Default: all layers are loaded.
     pub fn lwo_one_layer_only_str(&mut self, name: &str) {
         self.set_string_property(
-            str::from_utf8(AI_CONFIG_IMPORT_LWO_ONE_LAYER_ONLY).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_LWO_ONE_LAYER_ONLY)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             name,
         );
     }
@@ -1076,7 +1241,10 @@ impl Importer {
     /// Default: all layers are loaded.
     pub fn lwo_one_layer_only_int(&mut self, index: i32) {
         self.set_int_property(
-            str::from_utf8(AI_CONFIG_IMPORT_LWO_ONE_LAYER_ONLY).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_LWO_ONE_LAYER_ONLY)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             index,
         );
     }
@@ -1090,7 +1258,10 @@ impl Importer {
     /// Default: false.
     pub fn md5_no_anim_autoload(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_MD5_NO_ANIM_AUTOLOAD).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD5_NO_ANIM_AUTOLOAD)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -1108,7 +1279,10 @@ impl Importer {
     /// Default: taken from file.
     pub fn lws_anim_start(&mut self, frame: i32) {
         self.set_int_property(
-            str::from_utf8(AI_CONFIG_IMPORT_LWS_ANIM_START).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_LWS_ANIM_START)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             frame,
         );
     }
@@ -1119,7 +1293,10 @@ impl Importer {
     /// Default: taken from file.
     pub fn lws_anim_end(&mut self, frame: i32) {
         self.set_int_property(
-            str::from_utf8(AI_CONFIG_IMPORT_LWS_ANIM_END).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_LWS_ANIM_END)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             frame,
         );
     }
@@ -1131,7 +1308,13 @@ impl Importer {
     ///
     /// Default: 100.
     pub fn irr_anim_fps(&mut self, fps: i32) {
-        self.set_int_property(str::from_utf8(AI_CONFIG_IMPORT_IRR_ANIM_FPS).unwrap(), fps);
+        self.set_int_property(
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_IRR_ANIM_FPS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            fps,
+        );
     }
 
     /// Ogre Importer will try to find referenced materials from this file.
@@ -1146,7 +1329,10 @@ impl Importer {
     /// Default value: Scene.material.
     pub fn ogre_material_file(&mut self, file: &str) {
         self.set_string_property(
-            str::from_utf8(AI_CONFIG_IMPORT_OGRE_MATERIAL_FILE).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_OGRE_MATERIAL_FILE)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             file,
         );
     }
@@ -1170,7 +1356,10 @@ impl Importer {
     /// Default: false.
     pub fn ogre_texture_type_from_filename(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_OGRE_TEXTURETYPE_FROM_FILENAME).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_OGRE_TEXTURETYPE_FROM_FILENAME)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -1183,7 +1372,10 @@ impl Importer {
     /// Default: true.
     pub fn ifc_skip_space_representations(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_IFC_SKIP_SPACE_REPRESENTATIONS).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_IFC_SKIP_SPACE_REPRESENTATIONS)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -1201,7 +1393,10 @@ impl Importer {
     /// Default: true.
     pub fn ifc_custom_triangulation(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_IFC_CUSTOM_TRIANGULATION).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_IFC_CUSTOM_TRIANGULATION)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
@@ -1211,7 +1406,10 @@ impl Importer {
     /// Default: false.
     pub fn collada_ignore_up_direction(&mut self, enable: bool) {
         self.set_bool_property(
-            str::from_utf8(AI_CONFIG_IMPORT_COLLADA_IGNORE_UP_DIRECTION).unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_COLLADA_IGNORE_UP_DIRECTION)
+                .unwrap()
+                .to_str()
+                .unwrap(),
             enable,
         );
     }
