@@ -1,6 +1,6 @@
 [package]
 name = "open-asset-importer"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Lee Jeffery <lee@leejeffery.co.uk>", "Jack Fransham"]
 edition = "2018"
 
