@@ -20,7 +20,7 @@ impl Node {
     }
 
     /// Returns the node's transformation matrix.
-    pub fn transformation(&self) -> Matrix4x4 {
+    pub fn transform(&self) -> Matrix4x4 {
         Matrix4x4::from_raw(self.mTransformation)
     }
 
@@ -35,7 +35,7 @@ impl Node {
     }
 
     /// Returns a vector containing all of the child nodes under this node.
-    pub fn child_iter(&self) -> NodeIter {
+    pub fn children(&self) -> NodeIter {
         NodeIter::new(
             NonNull::new(self.mChildren as *mut *const aiNode),
             self.mNumChildren as usize,
@@ -130,7 +130,7 @@ define_type! {
 }
 
 /// The value of a metadata item.
-pub enum Value<'a> {
+pub enum MetadataValue<'a> {
     /// A boolean
     Bool(bool),
     /// A signed int
@@ -149,19 +149,19 @@ pub enum Value<'a> {
 
 impl MetadataEntry {
     /// Get the value of this entry
-    pub fn get(&self) -> Value<'_> {
+    pub fn get(&self) -> MetadataValue<'_> {
         unsafe {
             match self.mType {
-                ffi::aiMetadataType_AI_BOOL => Value::Bool(*(self.mData as *const bool)),
-                ffi::aiMetadataType_AI_INT32 => Value::I32(*(self.mData as *const i32)),
-                ffi::aiMetadataType_AI_UINT64 => Value::U64(*(self.mData as *const u64)),
-                ffi::aiMetadataType_AI_FLOAT => Value::F32(*(self.mData as *const f32)),
-                ffi::aiMetadataType_AI_DOUBLE => Value::F64(*(self.mData as *const f64)),
+                ffi::aiMetadataType_AI_BOOL => MetadataValue::Bool(*(self.mData as *const bool)),
+                ffi::aiMetadataType_AI_INT32 => MetadataValue::I32(*(self.mData as *const i32)),
+                ffi::aiMetadataType_AI_UINT64 => MetadataValue::U64(*(self.mData as *const u64)),
+                ffi::aiMetadataType_AI_FLOAT => MetadataValue::F32(*(self.mData as *const f32)),
+                ffi::aiMetadataType_AI_DOUBLE => MetadataValue::F64(*(self.mData as *const f64)),
                 ffi::aiMetadataType_AI_AISTRING => {
-                    Value::Str(crate::aistring_to_cstr(&*(self.mData as *const aiString)))
+                    MetadataValue::Str(crate::aistring_to_cstr(&*(self.mData as *const aiString)))
                 }
                 ffi::aiMetadataType_AI_AIVECTOR3D => {
-                    Value::Vector3D(Vector3D::from_raw(*(self.mData as *const aiVector3D)))
+                    MetadataValue::Vector3D(Vector3D::from_raw(*(self.mData as *const aiVector3D)))
                 }
                 _ => unreachable!(),
             }

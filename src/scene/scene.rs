@@ -71,7 +71,7 @@ impl Scene<'_> {
     }
 
     /// Returns an iterator over all the meshes in the scene.
-    pub fn mesh_iter(&self) -> MeshIter {
+    pub fn meshes(&self) -> MeshIter {
         MeshIter::new(
             NonNull::new(self.mMeshes as *mut *const aiMesh),
             self.mNumMeshes as usize,
@@ -79,8 +79,8 @@ impl Scene<'_> {
     }
 
     /// Return an individual mesh from the scene.
-    pub fn mesh(&self, id: usize) -> Option<&Mesh> {
-        if id < self.mNumMeshes as usize {
+    pub fn mesh(&self, id: u32) -> Option<&Mesh> {
+        if id < self.mNumMeshes {
             unsafe {
                 Some(Mesh::from_raw(NonNull::new(
                     *(NonNull::new(self.mMeshes)?.as_ptr().offset(id as isize)),
@@ -97,11 +97,24 @@ impl Scene<'_> {
     }
 
     /// Returns an iterator over all the materials in the scene.
-    pub fn material_iter(&self) -> MaterialIter {
+    pub fn materials(&self) -> MaterialIter {
         MaterialIter::new(
             NonNull::new(self.mMaterials as *mut *const aiMaterial),
             self.mNumMaterials as usize,
         )
+    }
+
+    /// Get the nth material definition in the scene
+    pub fn material(&self, id: u32) -> Option<&Material> {
+        if id < self.mNumMaterials {
+            unsafe {
+                Some(Material::from_raw(NonNull::new(
+                    *(NonNull::new(self.mMaterials)?.as_ptr().offset(id as isize)),
+                )?))
+            }
+        } else {
+            None
+        }
     }
 
     /// Returns the number of animations in the scene.
@@ -110,7 +123,7 @@ impl Scene<'_> {
     }
 
     /// Returns an iterator over all the animations in the scene.
-    pub fn animation_iter(&self) -> AnimationIter {
+    pub fn animations(&self) -> AnimationIter {
         AnimationIter::new(
             NonNull::new(self.mAnimations as *mut *const aiAnimation),
             self.mNumAnimations as usize,
@@ -118,8 +131,8 @@ impl Scene<'_> {
     }
 
     /// Return an individual animation from the scene.
-    pub fn animation(&self, id: usize) -> Option<&Animation> {
-        if id < self.mNumAnimations as usize {
+    pub fn animation(&self, id: u32) -> Option<&Animation> {
+        if id < self.mNumAnimations {
             unsafe {
                 Some(Animation::from_raw(NonNull::new(
                     *(NonNull::new(self.mAnimations)?.as_ptr().offset(id as isize)),
@@ -136,7 +149,7 @@ impl Scene<'_> {
     }
 
     /// Returns an iterator over all the textures in the scene, if any.
-    pub fn texture_iter(&self) -> TextureIter {
+    pub fn textures(&self) -> TextureIter {
         TextureIter::new(
             NonNull::new(self.mTextures as *mut *const aiTexture),
             self.mNumTextures as usize,
@@ -149,7 +162,7 @@ impl Scene<'_> {
     }
 
     /// Returns an iterator over all the lights in the scene.
-    pub fn light_iter(&self) -> LightIter {
+    pub fn light(&self) -> LightIter {
         LightIter::new(
             NonNull::new(self.mLights as *mut *const aiLight),
             self.mNumLights as usize,
@@ -162,7 +175,7 @@ impl Scene<'_> {
     }
 
     /// Returns an iterator over all the cameras in the scene.
-    pub fn camera_iter(&self) -> CameraIter {
+    pub fn camera(&self) -> CameraIter {
         CameraIter::new(
             NonNull::new(self.mCameras as *mut *const aiCamera),
             self.mNumCameras as usize,

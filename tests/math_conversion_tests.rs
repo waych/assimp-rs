@@ -1,6 +1,6 @@
 #![cfg(feature = "cgmath")]
-extern crate open_asset_importer as assimp;
 extern crate cgmath;
+extern crate open_asset_importer as assimp;
 
 use assimp::math::*;
 use std::os::raw::c_float;

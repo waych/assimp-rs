@@ -1,3 +1,4 @@
+use crate::math::Color3D;
 #[cfg(feature = "cgmath")]
 use cgmath::Vector4;
 use ffi::aiColor4D;
@@ -44,5 +45,11 @@ impl From<Vector4<f32>> for Color4D {
 impl From<Color4D> for Vector4<f32> {
     fn from(c: Color4D) -> Vector4<f32> {
         Vector4::new(c.r, c.g, c.b, c.a)
+    }
+}
+
+impl From<Color3D> for Color4D {
+    fn from(c: Color3D) -> Color4D {
+        Color4D::new(c.r, c.g, c.b, 1.0)
     }
 }

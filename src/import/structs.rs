@@ -2,6 +2,8 @@
 
 use ffi::*;
 
+use std::convert::TryFrom;
+
 use crate::math::Matrix4x4;
 
 bitflags::bitflags! {
@@ -32,6 +34,29 @@ bitflags::bitflags! {
         const ROTATION    = AI_UVTRAFO_ROTATION;
         const TRANSLATION = AI_UVTRAFO_TRANSLATION;
         const ALL         = AI_UVTRAFO_ALL;
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u32)]
+pub enum PrimitiveType {
+    Point = aiPrimitiveType_aiPrimitiveType_POINT,
+    Line = aiPrimitiveType_aiPrimitiveType_LINE,
+    Triangle = aiPrimitiveType_aiPrimitiveType_TRIANGLE,
+    Polygon = aiPrimitiveType_aiPrimitiveType_POLYGON,
+}
+
+impl TryFrom<u32> for PrimitiveType {
+    type Error = ();
+
+    fn try_from(other: u32) -> Result<Self, ()> {
+        match other {
+            ffi::aiPrimitiveType_aiPrimitiveType_POINT => Ok(Self::Point),
+            ffi::aiPrimitiveType_aiPrimitiveType_LINE => Ok(Self::Line),
+            ffi::aiPrimitiveType_aiPrimitiveType_TRIANGLE => Ok(Self::Triangle),
+            ffi::aiPrimitiveType_aiPrimitiveType_POLYGON => Ok(Self::Polygon),
+            _ => Err(()),
+        }
     }
 }
 
