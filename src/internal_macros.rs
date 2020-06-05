@@ -104,6 +104,12 @@ macro_rules! impl_iterator_pod {
                 }
             }
         }
+
+        impl<'a> ExactSizeIterator for $name<'a> {
+            fn len(&self) -> usize {
+                self.len
+            }
+        }
     };
 }
 
