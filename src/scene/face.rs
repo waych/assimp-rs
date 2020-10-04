@@ -3,7 +3,7 @@ use std::{
     borrow::Borrow,
     convert::AsRef,
     fmt,
-    ops::{Deref, Index},
+    ops::Index,
 };
 
 use ffi::aiFace;

@@ -1,5 +1,6 @@
 use crate::math::{Color3D, Color4D, Vector3D};
 use derive_more::{From, TryInto};
+#[allow(unused_imports)]
 use ffi::{
     aiBlendMode_aiBlendMode_Additive, aiBlendMode_aiBlendMode_Default, aiGetMaterialColor,
     aiGetMaterialFloatArray, aiGetMaterialIntegerArray, aiGetMaterialString, aiGetMaterialTexture,
@@ -28,7 +29,7 @@ use ffi::{
     _AI_MATKEY_TEXOP_BASE, _AI_MATKEY_TEXTURE_BASE, _AI_MATKEY_UVWSRC_BASE,
 };
 use std::convert::{TryFrom, TryInto};
-use std::{any::Any, ffi::CStr};
+use std::ffi::CStr;
 
 define_type_and_iterator_indirect! {
     /// A single material. This is _not_ the same as a single texture, and in fact a

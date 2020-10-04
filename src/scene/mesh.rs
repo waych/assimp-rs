@@ -1,6 +1,6 @@
 use ffi::{aiBone, aiColor4D, aiMesh, aiVector3D, aiVertexWeight};
 
-use arrayvec::ArrayVec;
+// use arrayvec::ArrayVec;
 
 use std::ptr::NonNull;
 
