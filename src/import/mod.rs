@@ -85,7 +85,7 @@ impl Importer {
     pub fn read_memory<'a>(&self, data: &[u8]) -> Result<Scene<'a>, &str> {
         let raw_scene = unsafe {
             aiImportFileFromMemoryWithProperties(
-                data.as_ptr() as *const i8,
+                data.as_ptr() as *const _,
                 data.len() as u32,
                 self.flags,
                 ptr::null_mut(),
