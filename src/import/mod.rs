@@ -77,18 +77,18 @@ impl Importer {
         }
     }
 
-    /// Load a scene from memory.
+    /// Load a scene from memory with a file extension hint.
     ///
     /// If the call succeeds, return value is `Ok`, containing the loaded `Scene` structure.
     /// If the call fails, return value is `Err`, containing the error string returned from
     /// the Assimp library.
-    pub fn read_memory<'a>(&self, data: &[u8]) -> Result<Scene<'a>, &str> {
+    pub fn read_memory_with_hint<'a>(&self, data: &[u8], hint: &str) -> Result<Scene<'a>, &str> {
         let raw_scene = unsafe {
             aiImportFileFromMemoryWithProperties(
                 data.as_ptr() as *const i8,
                 data.len() as u32,
                 self.flags,
-                ptr::null_mut(),
+                CString::new(hint).unwrap().as_ptr(),
                 self.property_store,
             )
         };
@@ -109,6 +109,15 @@ impl Importer {
                 }
             }
         }
+    }
+
+    /// Load a scene from memory.
+    ///
+    /// If the call succeeds, return value is `Ok`, containing the loaded `Scene` structure.
+    /// If the call fails, return value is `Err`, containing the error string returned from
+    /// the Assimp library.
+    pub fn read_memory<'a>(&self, data: &[u8]) -> Result<Scene<'a>, &str> {
+        self.read_memory_with_hint(data, "")
     }
 
     /// Apply post-processing to an already-imported scene.
