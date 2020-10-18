@@ -20,97 +20,12 @@ use std::str;
 
 use ffi::*;
 
+use crate::io::*;
 use crate::math::matrix4::*;
 use crate::scene::*;
 
 pub mod structs;
 use self::structs::*;
-
-pub trait FileIO {
-    type File;
-    fn open(&self, file: &str, mode: &str) -> Option<Box<dyn File>> {
-        println!("Invoked with file {} mode {}", file, mode);
-        unimplemented!("FileIO::open");
-    }
-}
-
-pub trait File {
-    fn read(&self) {
-        unimplemented!("fake read");
-    }
-}
-
-/// This type allows us to generate C stubs for whatever trait object the user supplies.
-struct FileWrapper<T: FileIO> {
-    phantom: std::marker::PhantomData<T>,
-}
-
-impl<T: FileIO> FileWrapper<T> {
-    /// Implementation for aiFileIO::OpenProc.
-    unsafe extern "C" fn io_open(
-        ai_file_io: *mut aiFileIO,
-        file_path: *const ::std::os::raw::c_char,
-        mode: *const ::std::os::raw::c_char,
-    ) -> *mut aiFile {
-        let ai_file_io: &mut aiFileIO = &mut *ai_file_io;
-        let boxed = Box::from_raw(ai_file_io.UserData as *mut &mut dyn FileIO<File = T::File>);
-
-        let file_path = CStr::from_ptr(file_path).to_str().unwrap_or("Invalid UTF-8 Filename");
-        let mode = CStr::from_ptr(mode).to_str().unwrap_or("Invalid UTF-8 Mode");
-        let file = match (*boxed).open(file_path, mode) {
-            None => return ptr::null_mut(),
-            Some(file) => file,
-        };
-
-        //  Open should be able to return some type, and we should stuff it into an aiFile and
-        //  return that.
-        //
-        let ai_file = aiFile {
-            ReadProc: Some(Self::io_read),
-            WriteProc: Some(Self::io_write),
-            TellProc: Some(Self::io_tell),
-            FileSizeProc: Some(Self::io_size),
-            SeekProc: Some(Self::io_seek),
-            FlushProc: Some(Self::io_flush),
-            UserData: std::ptr::null_mut(),
-        };
-        ptr::null_mut()
-    }
-
-    /// Implementation for aiFileIO::CloseProc.
-    unsafe extern "C" fn io_close(ai_file_io: *mut aiFileIO, file: *mut aiFile) {
-        let ai_file_io: &mut aiFileIO = &mut *ai_file_io;
-        let boxed = Box::from_raw(ai_file_io.UserData as *mut &mut dyn FileIO<File = T::File>);
-    }
-    unsafe extern "C" fn io_read(
-        ai_file: *mut aiFile,
-        buffer: *mut std::os::raw::c_char,
-        arg3: size_t,
-        arg4: size_t,
-    ) -> size_t {
-        unimplemented!("io_read");
-    }
-    unsafe extern "C" fn io_write(
-        ai_file: *mut aiFile,
-        buffer: *const std::os::raw::c_char,
-        arg3: size_t,
-        arg4: size_t,
-    ) -> size_t {
-        unimplemented!("io_write");
-    }
-    unsafe extern "C" fn io_tell(ai_file: *mut aiFile) -> size_t {
-        unimplemented!("io_tell");
-    }
-    unsafe extern "C" fn io_size(ai_file: *mut aiFile) -> size_t {
-        unimplemented!("io_size");
-    }
-    unsafe extern "C" fn io_seek(ai_file: *mut aiFile, arg2: size_t, arg3: aiOrigin) -> aiReturn {
-        unimplemented!("io_seek");
-    }
-    unsafe extern "C" fn io_flush(ai_file: *mut aiFile) {
-        unimplemented!("io_flush");
-    }
-}
 
 /// The `Importer` type.
 ///
@@ -168,21 +83,13 @@ impl Importer {
     /// If the call succeeds, return value is `Ok`, containing the loaded `Scene` structure.
     /// If the call fails, return value is `Err`, containing the error string returned from
     /// the Assimp library.
-    pub fn read_file_with_io<'a, T>(&self, file: &str, mut file_io: T) -> Result<Scene<'a>, &str>
+    pub fn read_file_with_io<'a, T>(&self, file: &str, file_io: &T) -> Result<Scene<'a>, &str>
     where
         T: FileIO,
         T::File: File,
     {
         let cstr = CString::new(file).unwrap();
-
-        let reference = &mut file_io;
-        let trait_obj: &mut dyn FileIO<File = T::File> = reference;
-        let user_data = Box::into_raw(Box::new(trait_obj)) as *mut i8;
-        let mut ai_file_io = aiFileIO {
-            OpenProc: Some(FileWrapper::<T>::io_open),
-            CloseProc: Some(FileWrapper::<T>::io_close),
-            UserData: user_data,
-        };
+        let mut ai_file_io = crate::io::wrap_file_io(file_io);
         let raw_scene = unsafe {
             aiImportFileExWithProperties(
                 cstr.as_ptr(),
