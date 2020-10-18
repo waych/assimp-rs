@@ -26,6 +26,92 @@ use crate::scene::*;
 pub mod structs;
 use self::structs::*;
 
+pub trait FileIO {
+    type File;
+    fn open(&self, file: &str, mode: &str) -> Option<Box<dyn File>> {
+        println!("Invoked with file {} mode {}", file, mode);
+        unimplemented!("FileIO::open");
+    }
+}
+
+pub trait File {
+    fn read(&self) {
+        unimplemented!("fake read");
+    }
+}
+
+/// This type allows us to generate C stubs for whatever trait object the user supplies.
+struct FileWrapper<T: FileIO> {
+    phantom: std::marker::PhantomData<T>,
+}
+
+impl<T: FileIO> FileWrapper<T> {
+    /// Implementation for aiFileIO::OpenProc.
+    unsafe extern "C" fn io_open(
+        ai_file_io: *mut aiFileIO,
+        file_path: *const ::std::os::raw::c_char,
+        mode: *const ::std::os::raw::c_char,
+    ) -> *mut aiFile {
+        let ai_file_io: &mut aiFileIO = &mut *ai_file_io;
+        let boxed = Box::from_raw(ai_file_io.UserData as *mut &mut dyn FileIO<File = T::File>);
+
+        let file_path = CStr::from_ptr(file_path).to_str().unwrap_or("Invalid UTF-8 Filename");
+        let mode = CStr::from_ptr(mode).to_str().unwrap_or("Invalid UTF-8 Mode");
+        let file = match (*boxed).open(file_path, mode) {
+            None => return ptr::null_mut(),
+            Some(file) => file,
+        };
+
+        //  Open should be able to return some type, and we should stuff it into an aiFile and
+        //  return that.
+        //
+        let ai_file = aiFile {
+            ReadProc: Some(Self::io_read),
+            WriteProc: Some(Self::io_write),
+            TellProc: Some(Self::io_tell),
+            FileSizeProc: Some(Self::io_size),
+            SeekProc: Some(Self::io_seek),
+            FlushProc: Some(Self::io_flush),
+            UserData: std::ptr::null_mut(),
+        };
+        ptr::null_mut()
+    }
+
+    /// Implementation for aiFileIO::CloseProc.
+    unsafe extern "C" fn io_close(ai_file_io: *mut aiFileIO, file: *mut aiFile) {
+        let ai_file_io: &mut aiFileIO = &mut *ai_file_io;
+        let boxed = Box::from_raw(ai_file_io.UserData as *mut &mut dyn FileIO<File = T::File>);
+    }
+    unsafe extern "C" fn io_read(
+        ai_file: *mut aiFile,
+        buffer: *mut std::os::raw::c_char,
+        arg3: size_t,
+        arg4: size_t,
+    ) -> size_t {
+        unimplemented!("io_read");
+    }
+    unsafe extern "C" fn io_write(
+        ai_file: *mut aiFile,
+        buffer: *const std::os::raw::c_char,
+        arg3: size_t,
+        arg4: size_t,
+    ) -> size_t {
+        unimplemented!("io_write");
+    }
+    unsafe extern "C" fn io_tell(ai_file: *mut aiFile) -> size_t {
+        unimplemented!("io_tell");
+    }
+    unsafe extern "C" fn io_size(ai_file: *mut aiFile) -> size_t {
+        unimplemented!("io_size");
+    }
+    unsafe extern "C" fn io_seek(ai_file: *mut aiFile, arg2: size_t, arg3: aiOrigin) -> aiReturn {
+        unimplemented!("io_seek");
+    }
+    unsafe extern "C" fn io_flush(ai_file: *mut aiFile) {
+        unimplemented!("io_flush");
+    }
+}
+
 /// The `Importer` type.
 ///
 /// See [module-level documentation](index.html) for examples.
@@ -37,10 +123,7 @@ pub struct Importer {
 impl Importer {
     /// Create a new Importer.
     pub fn new() -> Importer {
-        Importer {
-            property_store: unsafe { aiCreatePropertyStore() },
-            flags: 0,
-        }
+        Importer { property_store: unsafe { aiCreatePropertyStore() }, flags: 0 }
     }
 
     /// Load a scene from the specified file.
@@ -76,7 +159,56 @@ impl Importer {
             }
         }
     }
+    /// Load a scene from the specified file using custom IO logic.
+    ///
+    /// This method allows one to specify their own VFS-like system from rust code directly.
+    /// Required for e.g. loading multiple linked resources from memory or via other method (zip,
+    /// etc).
+    ///
+    /// If the call succeeds, return value is `Ok`, containing the loaded `Scene` structure.
+    /// If the call fails, return value is `Err`, containing the error string returned from
+    /// the Assimp library.
+    pub fn read_file_with_io<'a, T>(&self, file: &str, mut file_io: T) -> Result<Scene<'a>, &str>
+    where
+        T: FileIO,
+        T::File: File,
+    {
+        let cstr = CString::new(file).unwrap();
 
+        let reference = &mut file_io;
+        let trait_obj: &mut dyn FileIO<File = T::File> = reference;
+        let user_data = Box::into_raw(Box::new(trait_obj)) as *mut i8;
+        let mut ai_file_io = aiFileIO {
+            OpenProc: Some(FileWrapper::<T>::io_open),
+            CloseProc: Some(FileWrapper::<T>::io_close),
+            UserData: user_data,
+        };
+        let raw_scene = unsafe {
+            aiImportFileExWithProperties(
+                cstr.as_ptr(),
+                self.flags,
+                &mut ai_file_io,
+                self.property_store,
+            )
+        };
+
+        if let Some(raw_scene) = NonNull::new(raw_scene as *mut _) {
+            unsafe { Ok(Scene::from_raw(raw_scene)) }
+        } else {
+            let error_str = unsafe { aiGetErrorString() };
+            if error_str.is_null() {
+                Err("Unknown error")
+            } else {
+                unsafe {
+                    let cstr = CStr::from_ptr(error_str);
+                    match cstr.to_str() {
+                        Ok(s) => Err(s),
+                        Err(_) => Err("Unknown error"),
+                    }
+                }
+            }
+        }
+    }
     /// Load a scene from memory with a file extension hint.
     ///
     /// If the call succeeds, return value is `Ok`, containing the loaded `Scene` structure.
@@ -152,10 +284,7 @@ impl Importer {
     /// importing, postprocessing, ..) and dumps these timings to the output log.
     pub fn measure_time(&mut self, enable: bool) {
         self.set_bool_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_GLOB_MEASURE_TIME)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_GLOB_MEASURE_TIME).unwrap().to_str().unwrap(),
             enable,
         );
     }
@@ -166,10 +295,7 @@ impl Importer {
     /// to loaders and post-processing steps to use faster code paths, if possible.
     pub fn favour_speed(&mut self, enable: bool) {
         self.set_bool_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_FAVOUR_SPEED)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_FAVOUR_SPEED).unwrap().to_str().unwrap(),
             enable,
         );
     }
@@ -309,10 +435,7 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_RemoveComponent, args.enable);
         if args.enable {
             self.set_int_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_RVC_FLAGS)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_RVC_FLAGS).unwrap().to_str().unwrap(),
                 args.components.bits() as i32,
             );
         }
@@ -380,10 +503,7 @@ impl Importer {
                 args.triangle_limit as _,
             );
             self.set_int_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_SLM_VERTEX_LIMIT)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_SLM_VERTEX_LIMIT).unwrap().to_str().unwrap(),
                 args.vertex_limit as _,
             );
         }
@@ -405,10 +525,7 @@ impl Importer {
         let mut args = PreTransformVertices::default();
         closure(&mut args);
 
-        self.set_import_flag(
-            aiPostProcessSteps_aiProcess_PreTransformVertices,
-            args.enable,
-        );
+        self.set_import_flag(aiPostProcessSteps_aiProcess_PreTransformVertices, args.enable);
         if args.enable {
             self.set_bool_property(
                 CStr::from_bytes_with_nul(AI_CONFIG_PP_PTV_KEEP_HIERARCHY)
@@ -418,10 +535,7 @@ impl Importer {
                 args.keep_hierarchy,
             );
             self.set_bool_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_PTV_NORMALIZE)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_PTV_NORMALIZE).unwrap().to_str().unwrap(),
                 args.normalize,
             );
             self.set_bool_property(
@@ -457,10 +571,7 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_LimitBoneWeights, args.enable);
         if args.enable {
             self.set_int_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_LBW_MAX_WEIGHTS)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_LBW_MAX_WEIGHTS).unwrap().to_str().unwrap(),
                 args.max_weights as _,
             );
         }
@@ -501,16 +612,10 @@ impl Importer {
         let mut args = ImproveCacheLocality::default();
         closure(&mut args);
 
-        self.set_import_flag(
-            aiPostProcessSteps_aiProcess_ImproveCacheLocality,
-            args.enable,
-        );
+        self.set_import_flag(aiPostProcessSteps_aiProcess_ImproveCacheLocality, args.enable);
         if args.enable {
             self.set_int_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_ICL_PTCACHE_SIZE)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_ICL_PTCACHE_SIZE).unwrap().to_str().unwrap(),
                 args.cache_size as i32,
             );
         }
@@ -533,16 +638,10 @@ impl Importer {
         let mut args = RemoveRedundantMaterials::default();
         closure(&mut args);
 
-        self.set_import_flag(
-            aiPostProcessSteps_aiProcess_RemoveRedundantMaterials,
-            args.enable,
-        );
+        self.set_import_flag(aiPostProcessSteps_aiProcess_RemoveRedundantMaterials, args.enable);
         if args.enable {
             self.set_string_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_RRM_EXCLUDE_LIST)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_RRM_EXCLUDE_LIST).unwrap().to_str().unwrap(),
                 &args.exclude_list,
             );
         }
@@ -590,10 +689,7 @@ impl Importer {
             }
 
             self.set_int_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_SBP_REMOVE)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_SBP_REMOVE).unwrap().to_str().unwrap(),
                 args.remove.bits() as i32,
             );
         }
@@ -627,10 +723,7 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_FindDegenerates, args.enable);
         if args.enable {
             self.set_bool_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_FD_REMOVE)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_FD_REMOVE).unwrap().to_str().unwrap(),
                 args.remove,
             );
         }
@@ -694,10 +787,7 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_TransformUVCoords, args.enable);
         if args.enable {
             self.set_int_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_TUV_EVALUATE)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_TUV_EVALUATE).unwrap().to_str().unwrap(),
                 args.flags.bits() as i32,
             );
         }
@@ -752,10 +842,7 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_OptimizeGraph, args.enable);
         if args.enable {
             self.set_string_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_OG_EXCLUDE_LIST)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_OG_EXCLUDE_LIST).unwrap().to_str().unwrap(),
                 &args.exclude_list,
             );
         }
@@ -804,10 +891,7 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_SplitByBoneCount, args.enable);
         if args.enable {
             self.set_int_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_SBBC_MAX_BONES)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_SBBC_MAX_BONES).unwrap().to_str().unwrap(),
                 args.max_bones as _,
             );
         }
@@ -830,17 +914,11 @@ impl Importer {
         self.set_import_flag(aiPostProcessSteps_aiProcess_Debone, args.enable);
         if args.enable {
             self.set_float_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_DB_THRESHOLD)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_DB_THRESHOLD).unwrap().to_str().unwrap(),
                 args.threshold as f32,
             );
             self.set_bool_property(
-                CStr::from_bytes_with_nul(AI_CONFIG_PP_DB_ALL_OR_NONE)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
+                CStr::from_bytes_with_nul(AI_CONFIG_PP_DB_ALL_OR_NONE).unwrap().to_str().unwrap(),
                 args.all_or_none,
             );
         }
@@ -869,10 +947,7 @@ impl Importer {
     /// Default: colormap.lmp
     pub fn import_mdl_colormap(&mut self, path: &str) {
         self.set_string_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MDL_COLORMAP)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MDL_COLORMAP).unwrap().to_str().unwrap(),
             path,
         );
     }
@@ -936,10 +1011,7 @@ impl Importer {
     /// Default: true.
     pub fn fbx_read_cameras(&mut self, enable: bool) {
         self.set_bool_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_READ_CAMERAS)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_READ_CAMERAS).unwrap().to_str().unwrap(),
             enable,
         );
     }
@@ -949,10 +1021,7 @@ impl Importer {
     /// Default: true.
     pub fn fbx_read_lights(&mut self, enable: bool) {
         self.set_bool_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_READ_LIGHTS)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_READ_LIGHTS).unwrap().to_str().unwrap(),
             enable,
         );
     }
@@ -977,10 +1046,7 @@ impl Importer {
     /// Default: false.
     pub fn fbx_strict_mode(&mut self, enable: bool) {
         self.set_bool_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_STRICT_MODE)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_FBX_STRICT_MODE).unwrap().to_str().unwrap(),
             enable,
         );
     }
@@ -1022,10 +1088,7 @@ impl Importer {
     /// Default: first frame.
     pub fn global_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_GLOBAL_KEYFRAME)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_GLOBAL_KEYFRAME).unwrap().to_str().unwrap(),
             value,
         );
     }
@@ -1033,10 +1096,7 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MD3 importer.
     pub fn md3_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD3_KEYFRAME)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD3_KEYFRAME).unwrap().to_str().unwrap(),
             value,
         );
     }
@@ -1044,10 +1104,7 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MD2 importer.
     pub fn md2_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD2_KEYFRAME)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD2_KEYFRAME).unwrap().to_str().unwrap(),
             value,
         );
     }
@@ -1055,10 +1112,7 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MDL importer.
     pub fn mdl_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MDL_KEYFRAME)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MDL_KEYFRAME).unwrap().to_str().unwrap(),
             value,
         );
     }
@@ -1066,10 +1120,7 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the MDC importer.
     pub fn mdc_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MDC_KEYFRAME)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MDC_KEYFRAME).unwrap().to_str().unwrap(),
             value,
         );
     }
@@ -1077,10 +1128,7 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the SMD importer.
     pub fn smd_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_SMD_KEYFRAME)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_SMD_KEYFRAME).unwrap().to_str().unwrap(),
             value,
         );
     }
@@ -1088,10 +1136,7 @@ impl Importer {
     /// Override [`global_keyframe`](#method.global_keyframe) property for the Unreal importer.
     pub fn unreal_keyframe(&mut self, value: i32) {
         self.set_int_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_UNREAL_KEYFRAME)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_UNREAL_KEYFRAME).unwrap().to_str().unwrap(),
             value,
         );
     }
@@ -1145,10 +1190,7 @@ impl Importer {
     /// Default: false.
     pub fn ter_make_uvs(&mut self, enable: bool) {
         self.set_bool_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_TER_MAKE_UVS)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_TER_MAKE_UVS).unwrap().to_str().unwrap(),
             enable,
         );
     }
@@ -1193,10 +1235,7 @@ impl Importer {
     /// Default: "default".
     pub fn md3_skin_name(&mut self, name: &str) {
         self.set_string_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD3_SKIN_NAME)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD3_SKIN_NAME).unwrap().to_str().unwrap(),
             name,
         );
     }
@@ -1214,10 +1253,7 @@ impl Importer {
     /// Note that `<dir>` should have a terminal (back)slash.
     pub fn md3_shader_src(&mut self, path: &str) {
         self.set_string_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD3_SHADER_SRC)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_MD3_SHADER_SRC).unwrap().to_str().unwrap(),
             path,
         );
     }
@@ -1288,10 +1324,7 @@ impl Importer {
     /// Default: taken from file.
     pub fn lws_anim_start(&mut self, frame: i32) {
         self.set_int_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_LWS_ANIM_START)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_LWS_ANIM_START).unwrap().to_str().unwrap(),
             frame,
         );
     }
@@ -1302,10 +1335,7 @@ impl Importer {
     /// Default: taken from file.
     pub fn lws_anim_end(&mut self, frame: i32) {
         self.set_int_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_LWS_ANIM_END)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_LWS_ANIM_END).unwrap().to_str().unwrap(),
             frame,
         );
     }
@@ -1318,10 +1348,7 @@ impl Importer {
     /// Default: 100.
     pub fn irr_anim_fps(&mut self, fps: i32) {
         self.set_int_property(
-            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_IRR_ANIM_FPS)
-                .unwrap()
-                .to_str()
-                .unwrap(),
+            CStr::from_bytes_with_nul(AI_CONFIG_IMPORT_IRR_ANIM_FPS).unwrap().to_str().unwrap(),
             fps,
         );
     }
@@ -1432,21 +1459,11 @@ impl Importer {
     /// `Vec<String>` containing the supported file extensions in lower-case with no leading
     /// wildcard or period characters, e.g. "3ds", "obj", "fbx".
     pub fn get_extension_list() -> Vec<String> {
-        let mut ext_list = aiString {
-            length: 0,
-            data: [0; 1024],
-        };
+        let mut ext_list = aiString { length: 0, data: [0; 1024] };
         unsafe { aiGetExtensionList(&mut ext_list) };
 
-        let extensions = unsafe {
-            crate::aistring_to_cstr(&ext_list)
-                .to_str()
-                .unwrap()
-                .split(';')
-        };
-        extensions
-            .map(|x| x.trim_start_matches("*.").to_owned())
-            .collect()
+        let extensions = unsafe { crate::aistring_to_cstr(&ext_list).to_str().unwrap().split(';') };
+        extensions.map(|x| x.trim_start_matches("*.").to_owned()).collect()
     }
 }
 
