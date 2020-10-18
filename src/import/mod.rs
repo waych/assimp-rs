@@ -83,10 +83,7 @@ impl Importer {
     /// If the call succeeds, return value is `Ok`, containing the loaded `Scene` structure.
     /// If the call fails, return value is `Err`, containing the error string returned from
     /// the Assimp library.
-    pub fn read_file_with_io<'a, T>(&self, file: &str, file_io: &T) -> Result<Scene<'a>, &str>
-    where
-        T: FileIO,
-        T::File: File,
+    pub fn read_file_with_io<'a, T: FileIO>(&self, file: &str, file_io: &T) -> Result<Scene<'a>, &str>
     {
         let cstr = CString::new(file).unwrap();
         let mut ai_file_io = crate::io::wrap_file_io(file_io);

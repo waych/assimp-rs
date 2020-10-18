@@ -10,7 +10,6 @@ use ffi::*;
 /// Implement this trait along with the associated File type to use custom resource loading using
 /// the with_io() loading methods.
 pub trait FileIO {
-    type File;
     fn open(&self, file_path: &str, mode: &str) -> Option<Box<dyn File>>;
 }
 
@@ -33,12 +32,11 @@ pub trait File {
 }
 
 /// This type allows us to generate C stubs for whatever trait object the user supplies.
-struct FileWrapper<T: FileIO, S: File> {
+struct FileWrapper<T: FileIO> {
     _phantom_t: std::marker::PhantomData<T>,
-    _phantom_s: std::marker::PhantomData<S>,
 }
 
-impl<T: FileIO, S: File> FileWrapper<T, S> {
+impl<T: FileIO> FileWrapper<T> {
     /// Implementation for aiFileIO::OpenProc.
     unsafe extern "C" fn io_open(
         ai_file_io: *mut aiFileIO,
@@ -46,7 +44,7 @@ impl<T: FileIO, S: File> FileWrapper<T, S> {
         mode: *const ::std::os::raw::c_char,
     ) -> *mut aiFile {
         let file_io =
-            Box::leak(Box::from_raw((*ai_file_io).UserData as *mut &mut dyn FileIO<File = S>));
+            Box::leak(Box::from_raw((*ai_file_io).UserData as *mut &mut dyn FileIO));
 
         let file_path = CStr::from_ptr(file_path).to_str().unwrap_or("Invalid UTF-8 Filename");
         let mode = CStr::from_ptr(mode).to_str().unwrap_or("Invalid UTF-8 Mode");
@@ -136,14 +134,13 @@ impl<T: FileIO, S: File> FileWrapper<T, S> {
 pub fn wrap_file_io<T>(file_io: &T) -> aiFileIO
 where
     T: FileIO,
-    T::File: File,
 {
-    let trait_obj: &dyn FileIO<File = T::File> = file_io;
+    let trait_obj: &dyn FileIO = file_io;
     let user_data = Box::into_raw(Box::new(trait_obj)) as *mut i8;
     println!("user_data stuffed at {:?}", user_data);
     aiFileIO {
-        OpenProc: Some(FileWrapper::<T, T::File>::io_open),
-        CloseProc: Some(FileWrapper::<T, T::File>::io_close),
+        OpenProc: Some(FileWrapper::<T>::io_open),
+        CloseProc: Some(FileWrapper::<T>::io_close),
         UserData: user_data,
     }
 }
