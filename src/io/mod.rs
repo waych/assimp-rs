@@ -22,8 +22,8 @@ pub enum Origin {
 
 /// Implement this for a given resource to support custom resource loading.
 pub trait File {
-    fn read(&mut self, buf: &mut [i8], size: u64, count: u64) -> u64;
-    fn write(&mut self, buf: &[i8], size: u64, count: u64) -> u64;
+    fn read(&mut self, buf: &mut [u8], size: u64, count: u64) -> u64;
+    fn write(&mut self, buf: &[u8], size: u64, count: u64) -> u64;
     fn tell(&mut self) -> u64;
     fn size(&mut self) -> u64;
     fn seek(&mut self, pos: u64, origin: Origin) -> Result<(), ()>;
@@ -88,7 +88,7 @@ impl<T: FileIO> FileWrapper<T> {
     ) -> size_t {
         println!("Read called");
         let file = Self::get_file(ai_file);
-        let buffer = std::slice::from_raw_parts_mut(buffer, (size * count).try_into().unwrap());
+        let buffer = std::slice::from_raw_parts_mut(buffer as *mut u8, (size * count).try_into().unwrap());
         file.read(buffer, size, count)
     }
     unsafe extern "C" fn io_write(
@@ -98,7 +98,7 @@ impl<T: FileIO> FileWrapper<T> {
         count: size_t,
     ) -> size_t {
         let file = Self::get_file(ai_file);
-        let buffer = std::slice::from_raw_parts(buffer, (size * count).try_into().unwrap());
+        let buffer = std::slice::from_raw_parts(buffer as *mut u8, (size * count).try_into().unwrap());
         file.write(buffer, size, count)
     }
     unsafe extern "C" fn io_tell(ai_file: *mut aiFile) -> size_t {
