@@ -16,8 +16,10 @@ pub trait FileIO {
 
 /// Implement this for a given resource to support custom resource loading.
 pub trait File {
-    fn read(&mut self, buf: &mut [u8]) -> u64;
-    fn write(&mut self, buf: &[u8]) -> u64;
+    /// Should return the number of bytes read, or Err if read unsuccessful.
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, ()>;
+    /// Should return the number of bytes written, or Err if write unsuccessful.
+    fn write(&mut self, buf: &[u8]) -> Result<usize, ()>;
     fn tell(&mut self) -> u64;
     fn size(&mut self) -> u64;
     fn seek(&mut self, seek_from: SeekFrom) -> Result<(), ()>;
@@ -86,9 +88,13 @@ impl<T: FileIO> FileWrapper<T> {
         if size == 0 {
             panic!("Size 0 is invalid");
         }
+        if count == 0 {
+            panic!("Count 0 is invalid");
+        }
         if size > std::usize::MAX as u64 {
             panic!("huge read size not supported");
         }
+        let size = size as usize;
         if size == 1 {
             // This looks like a memcpy.
             if count > std::usize::MAX as u64 {
@@ -97,7 +103,10 @@ impl<T: FileIO> FileWrapper<T> {
             let count = count as usize;
 
             let (buffer, _) = buffer.split_at_mut(count);
-            file.read(buffer)
+            match file.read(buffer) {
+                Ok(size) => size as u64,
+                Err(_) => std::u64::MAX,
+            }
         } else {
             // We have to copy in strides. Implement this by looping for each object and tally the
             // count of full objects read.
@@ -105,8 +114,11 @@ impl<T: FileIO> FileWrapper<T> {
             for _ in 0..=count {
                 let split = buffer.split_at_mut(size as usize);
                 buffer = split.1;
-                let result = file.read(split.0);
-                if result != size {
+                let bytes_read = match file.read(split.0) {
+                    Err(_) => break,
+                    Ok(bytes_read) => bytes_read,
+                };
+                if bytes_read != size {
                     break;
                 }
                 total = total + 1;
@@ -120,16 +132,30 @@ impl<T: FileIO> FileWrapper<T> {
         size: size_t,
         count: size_t,
     ) -> size_t {
+        println!("Write called");
         let file = Self::get_file(ai_file);
+        let mut buffer = std::slice::from_raw_parts(buffer as *mut u8, (size * count).try_into().unwrap());
         if size == 0 {
             panic!("Write of size 0");
         }
         if count == 0 {
             panic!("Write of count 0");
         }
-        let mut buffer = std::slice::from_raw_parts(buffer as *mut u8, (size * count).try_into().unwrap());
+        if size > std::usize::MAX as u64 {
+            panic!("huge write size not supported");
+        }
+        let size = size as usize;
         if size == 1 {
-            file.write(buffer)
+            if count > std::usize::MAX as u64 {
+                panic!("huge write not supported");
+            }
+            let count = count as usize;
+
+            let (buffer, _) = buffer.split_at(count);
+            match file.write(buffer) {
+                Ok(size) => size as u64,
+                Err(_) => std::u64::MAX,
+            }
         } else {
             // Write in strides. Implement this by looping for each object and tally the
             // count of full objects written.
@@ -137,8 +163,11 @@ impl<T: FileIO> FileWrapper<T> {
             for _ in 0..=count {
                 let split = buffer.split_at(size as usize);
                 buffer = split.1;
-                let result = file.write(split.0);
-                if result != size {
+                let bytes_written = match file.write(split.0) {
+                    Err(_) => break,
+                    Ok(bytes_written) => bytes_written,
+                };
+                if bytes_written != size {
                     break;
                 }
                 total = total + 1;
