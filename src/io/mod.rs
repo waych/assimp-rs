@@ -22,8 +22,8 @@ pub enum Origin {
 
 /// Implement this for a given resource to support custom resource loading.
 pub trait File {
-    fn read(&mut self, buf: &mut [u8], size: u64, count: u64) -> u64;
-    fn write(&mut self, buf: &[u8], size: u64, count: u64) -> u64;
+    fn read(&mut self, buf: &mut [u8]) -> u64;
+    fn write(&mut self, buf: &[u8]) -> u64;
     fn tell(&mut self) -> u64;
     fn size(&mut self) -> u64;
     fn seek(&mut self, pos: u64, origin: Origin) -> Result<(), ()>;
@@ -88,8 +88,37 @@ impl<T: FileIO> FileWrapper<T> {
     ) -> size_t {
         println!("Read called");
         let file = Self::get_file(ai_file);
-        let buffer = std::slice::from_raw_parts_mut(buffer as *mut u8, (size * count).try_into().unwrap());
-        file.read(buffer, size, count)
+        let mut buffer = std::slice::from_raw_parts_mut(buffer as *mut u8, (size * count).try_into().unwrap());
+        if size == 0 {
+            panic!("Size 0 is invalid");
+        }
+        if size > std::usize::MAX as u64 {
+            panic!("huge read size not supported");
+        }
+        if size == 1 {
+            // This looks like a memcpy.
+            if count > std::usize::MAX as u64 {
+                panic!("huge read not supported");
+            }
+            let count = count as usize;
+
+            let (buffer, _) = buffer.split_at_mut(count);
+            file.read(buffer)
+        } else {
+            // We have to copy in strides. Implement this by looping for each object and tally the
+            // count of full objects read.
+            let mut total: u64 = 0;
+            for _ in 0..=count {
+                let split = buffer.split_at_mut(size as usize);
+                buffer = split.1;
+                let result = file.read(split.0);
+                if result != size {
+                    break;
+                }
+                total = total + 1;
+            }
+            total
+        }
     }
     unsafe extern "C" fn io_write(
         ai_file: *mut aiFile,
@@ -98,8 +127,30 @@ impl<T: FileIO> FileWrapper<T> {
         count: size_t,
     ) -> size_t {
         let file = Self::get_file(ai_file);
-        let buffer = std::slice::from_raw_parts(buffer as *mut u8, (size * count).try_into().unwrap());
-        file.write(buffer, size, count)
+        if size == 0 {
+            panic!("Write of size 0");
+        }
+        if count == 0 {
+            panic!("Write of count 0");
+        }
+        let mut buffer = std::slice::from_raw_parts(buffer as *mut u8, (size * count).try_into().unwrap());
+        if size == 1 {
+            file.write(buffer)
+        } else {
+            // Write in strides. Implement this by looping for each object and tally the
+            // count of full objects written.
+            let mut total: u64 = 0;
+            for _ in 0..=count {
+                let split = buffer.split_at(size as usize);
+                buffer = split.1;
+                let result = file.write(split.0);
+                if result != size {
+                    break;
+                }
+                total = total + 1;
+            }
+            total
+        }
     }
     unsafe extern "C" fn io_tell(ai_file: *mut aiFile) -> size_t {
         let file = Self::get_file(ai_file);
