@@ -53,7 +53,6 @@ impl<T: FileIO> FileWrapper<T> {
         // raw pointer.
         let double_box = Box::new(file);
         let user_data = Box::into_raw(double_box) as *mut i8;
-        println!("user_data stuffed as {:?}", user_data);
         let ai_file = aiFile {
             ReadProc: Some(Self::io_read),
             WriteProc: Some(Self::io_write),
@@ -82,7 +81,6 @@ impl<T: FileIO> FileWrapper<T> {
         size: size_t,
         count: size_t,
     ) -> size_t {
-        println!("Read called");
         let file = Self::get_file(ai_file);
         let mut buffer = std::slice::from_raw_parts_mut(buffer as *mut u8, (size * count).try_into().unwrap());
         if size == 0 {
@@ -132,7 +130,6 @@ impl<T: FileIO> FileWrapper<T> {
         size: size_t,
         count: size_t,
     ) -> size_t {
-        println!("Write called");
         let file = Self::get_file(ai_file);
         let mut buffer = std::slice::from_raw_parts(buffer as *mut u8, (size * count).try_into().unwrap());
         if size == 0 {
@@ -211,7 +208,6 @@ where
 {
     let trait_obj: &dyn FileIO = file_io;
     let user_data = Box::into_raw(Box::new(trait_obj)) as *mut i8;
-    println!("user_data stuffed at {:?}", user_data);
     aiFileIO {
         OpenProc: Some(FileWrapper::<T>::io_open),
         CloseProc: Some(FileWrapper::<T>::io_close),
