@@ -39,8 +39,7 @@ impl<T: FileIO> FileWrapper<T> {
         file_path: *const ::std::os::raw::c_char,
         mode: *const ::std::os::raw::c_char,
     ) -> *mut aiFile {
-        let file_io =
-            Box::leak(Box::from_raw((*ai_file_io).UserData as *mut &mut dyn FileIO));
+        let file_io = Box::leak(Box::from_raw((*ai_file_io).UserData as *mut &mut dyn FileIO));
 
         let file_path = CStr::from_ptr(file_path).to_str().unwrap_or("Invalid UTF-8 Filename");
         let mode = CStr::from_ptr(mode).to_str().unwrap_or("Invalid UTF-8 Mode");
@@ -82,7 +81,8 @@ impl<T: FileIO> FileWrapper<T> {
         count: size_t,
     ) -> size_t {
         let file = Self::get_file(ai_file);
-        let mut buffer = std::slice::from_raw_parts_mut(buffer as *mut u8, (size * count).try_into().unwrap());
+        let mut buffer =
+            std::slice::from_raw_parts_mut(buffer as *mut u8, (size * count).try_into().unwrap());
         if size == 0 {
             panic!("Size 0 is invalid");
         }
@@ -131,7 +131,8 @@ impl<T: FileIO> FileWrapper<T> {
         count: size_t,
     ) -> size_t {
         let file = Self::get_file(ai_file);
-        let mut buffer = std::slice::from_raw_parts(buffer as *mut u8, (size * count).try_into().unwrap());
+        let mut buffer =
+            std::slice::from_raw_parts(buffer as *mut u8, (size * count).try_into().unwrap());
         if size == 0 {
             panic!("Write of size 0");
         }
