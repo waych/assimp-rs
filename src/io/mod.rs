@@ -109,7 +109,7 @@ impl<T: FileIO> FileWrapper<T> {
             // We have to copy in strides. Implement this by looping for each object and tally the
             // count of full objects read.
             let mut total: u64 = 0;
-            for _ in 0..=count {
+            for _ in 0..count {
                 let split = buffer.split_at_mut(size as usize);
                 buffer = split.1;
                 let bytes_read = match file.read(split.0) {
@@ -158,7 +158,7 @@ impl<T: FileIO> FileWrapper<T> {
             // Write in strides. Implement this by looping for each object and tally the
             // count of full objects written.
             let mut total: u64 = 0;
-            for _ in 0..=count {
+            for _ in 0..count {
                 let split = buffer.split_at(size as usize);
                 buffer = split.1;
                 let bytes_written = match file.write(split.0) {
