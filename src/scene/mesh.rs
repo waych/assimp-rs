@@ -24,7 +24,7 @@ define_type_and_iterator_indirect! {
     struct BoneIter
 }
 
-define_type_and_iterator_indirect! {
+define_type_and_iterator! {
     /// Vertex weight type
     struct VertexWeight(&aiVertexWeight)
     /// Vertex weight iterator type.
@@ -257,7 +257,7 @@ impl Bone {
     /// Get an iterator over the vertex weights for this bone
     pub fn weights(&self) -> VertexWeightIter {
         VertexWeightIter::new(
-            NonNull::new(self.mWeights as *mut *const aiVertexWeight),
+            NonNull::new(self.mWeights),
             self.mNumWeights as usize,
         )
     }
