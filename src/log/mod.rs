@@ -72,12 +72,14 @@ impl LogStream {
 
     pub fn attach(&mut self) {
         if !self.attached {
+            self.attached = true;
             unsafe { aiAttachLogStream(&self.raw) }
         }
     }
 
     pub fn detach(&mut self) {
         if self.attached {
+            self.attached = false;
             unsafe {
                 aiDetachLogStream(&self.raw);
             }
