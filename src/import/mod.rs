@@ -121,7 +121,7 @@ impl Importer {
     pub fn read_memory_with_hint<'a>(&self, data: &[u8], hint: &str) -> Result<Scene<'a>, &str> {
         let raw_scene = unsafe {
             aiImportFileFromMemoryWithProperties(
-                data.as_ptr() as *const i8,
+                data.as_ptr() as *const _,
                 data.len() as u32,
                 self.flags,
                 CString::new(hint).unwrap().as_ptr(),

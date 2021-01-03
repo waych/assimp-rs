@@ -60,7 +60,7 @@ impl LogStream {
         LogStream {
             raw: aiLogStream {
                 callback: Some(cb),
-                user: ptr::null::<c_void>() as *mut i8,
+                user: ptr::null::<c_void>() as *mut _,
             },
             attached: false,
         }
