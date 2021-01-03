@@ -83,8 +83,11 @@ impl Importer {
     /// If the call succeeds, return value is `Ok`, containing the loaded `Scene` structure.
     /// If the call fails, return value is `Err`, containing the error string returned from
     /// the Assimp library.
-    pub fn read_file_with_io<'a, T: FileIO>(&self, file: &str, file_io: &T) -> Result<Scene<'a>, &str>
-    {
+    pub fn read_file_with_io<'a, T: FileIO>(
+        &self,
+        file: &str,
+        file_io: &T,
+    ) -> Result<Scene<'a>, &str> {
         let cstr = CString::new(file).unwrap();
         let mut ai_file_io = crate::io::wrap_file_io(file_io);
         let raw_scene = unsafe {
@@ -119,12 +122,13 @@ impl Importer {
     /// If the call fails, return value is `Err`, containing the error string returned from
     /// the Assimp library.
     pub fn read_memory_with_hint<'a>(&self, data: &[u8], hint: &str) -> Result<Scene<'a>, &str> {
+        let cstr = CString::new(hint).unwrap();
         let raw_scene = unsafe {
             aiImportFileFromMemoryWithProperties(
                 data.as_ptr() as *const _,
                 data.len() as u32,
                 self.flags,
-                CString::new(hint).unwrap().as_ptr(),
+                cstr.as_ptr(),
                 self.property_store,
             )
         };
